@@ -1,5 +1,6 @@
 import EventKit
 import Foundation
+import UIKit
 
 /// Reads today's events from every calendar on the phone (Tesla, Google, iCloud…).
 final class CalendarService {
@@ -48,5 +49,31 @@ final class CalendarService {
                     declined: declined
                 )
             }
+    }
+
+    /// Every event calendar on the phone: name + its iOS color (for Settings › Calendars).
+    func calendarList() -> [CalendarInfo] {
+        guard hasAccess else { return [] }
+        var seen = Set<String>()
+        return store.calendars(for: .event)
+            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+            .compactMap { c in
+                guard seen.insert(c.title).inserted else { return nil }
+                return CalendarInfo(name: c.title, hex: UIColor(cgColor: c.cgColor).hexString)
+            }
+    }
+}
+
+struct CalendarInfo: Hashable {
+    let name: String
+    let hex: String
+}
+
+extension UIColor {
+    var hexString: String {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        getRed(&r, green: &g, blue: &b, alpha: &a)
+        return String(format: "#%02X%02X%02X",
+                      Int(max(0, min(1, r)) * 255), Int(max(0, min(1, g)) * 255), Int(max(0, min(1, b)) * 255))
     }
 }

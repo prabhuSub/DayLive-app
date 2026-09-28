@@ -151,7 +151,8 @@ struct TodayView: View {
     @ViewBuilder
     private func livePill(snap: DaySnapshot) -> some View {
         if activity.isRunning, let c = snap.current {
-            let color = categories.category(for: c).color
+            let color = categories.displayColor(for: c)
+            Button { editing = c } label: {
             HStack(spacing: 8) {
                 ZStack {
                     Circle().fill(color).frame(width: 20, height: 20)
@@ -170,6 +171,9 @@ struct TodayView: View {
             .background(RoundedRectangle(cornerRadius: 10).fill(Theme.card))
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 1))
             .shadow(color: .black.opacity(0.08), radius: 8, y: 3)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Live now: \(c.title). Open steps.")
         }
     }
 
@@ -190,7 +194,7 @@ struct TodayView: View {
                     editing = block
                 } label: {
                     BlockRow(block: block, now: now,
-                             color: categories.category(for: block).color,
+                             color: categories.displayColor(for: block),
                              steps: store.steps(for: block.id))
                 }
                 .buttonStyle(.plain)

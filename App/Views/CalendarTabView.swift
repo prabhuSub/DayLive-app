@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Calendar tab: every calendar on the phone + your Hyperday tasks. Agenda (week) and Month.
 struct CalendarTabView: View {
-    enum Mode: String, CaseIterable, Hashable { case agenda = "Agenda", month = "Month" }
+    enum Mode: String, CaseIterable, Hashable { case agenda = "Agenda", week = "Week", month = "Month" }
 
     @EnvironmentObject private var store: BlockStore
     @EnvironmentObject private var categories: CategoryStore
@@ -26,10 +26,11 @@ struct CalendarTabView: View {
                     VStack(alignment: .leading, spacing: 14) {
                         titleRow
                         PillNav(options: Mode.allCases, selection: $mode) { $0.rawValue }
-                        if mode == .agenda {
-                            weekStrip(byDay: byDay)
-                        } else {
+                        if mode == .month {
                             monthGrid(byDay: byDay)
+                        } else {
+                            weekStrip(byDay: byDay)
+                                .padding(.leading, mode == .week ? WeekGrid.labelWidth : 0)
                         }
                         filters
                     }
@@ -47,6 +48,13 @@ struct CalendarTabView: View {
                             ForEach(weekDays, id: \.self) { day in
                                 daySection(day, items: byDay[day] ?? [])
                             }
+                        } else if mode == .week {
+                            WeekGrid(days: weekDays, byDay: byDay,
+                                     color: { categories.displayColor(for: $0) },
+                                     onTap: { editing = $0 })
+                                .padding(.vertical, 12)
+                                .padding(.trailing, 8)
+                                .cardBox(padding: 0)
                         } else {
                             daySection(selected, items: byDay[selected] ?? [])
                         }
@@ -91,7 +99,7 @@ struct CalendarTabView: View {
     }
 
     private var visibleRange: DateInterval {
-        if mode == .agenda {
+        if mode != .month {
             let start = weekDays.first ?? selected
             return DateInterval(start: start, end: cal.date(byAdding: .day, value: 7, to: start) ?? start)
         }
@@ -112,9 +120,7 @@ struct CalendarTabView: View {
 
     private var titleRow: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(mode == .agenda
-                 ? selected.formatted(Date.FormatStyle().month(.wide))
-                 : selected.formatted(Date.FormatStyle().month(.wide).year()))
+            Text(titleText)
                 .font(.system(size: 30, weight: .bold))
                 .foregroundStyle(Theme.text)
             Spacer()
@@ -130,6 +136,20 @@ struct CalendarTabView: View {
         }
     }
 
+    private var titleText: String {
+        switch mode {
+        case .agenda:
+            return selected.formatted(Date.FormatStyle().month(.wide))
+        case .week:
+            let days = weekDays
+            guard let first = days.first, let last = days.last else { return "" }
+            let f = Date.FormatStyle().month(.abbreviated).day()
+            return "\(first.formatted(f)) – \(last.formatted(f))"
+        case .month:
+            return selected.formatted(Date.FormatStyle().month(.wide).year())
+        }
+    }
+
     private func navButton(_ symbol: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
@@ -142,7 +162,7 @@ struct CalendarTabView: View {
     }
 
     private func shift(_ direction: Int) {
-        let next = mode == .agenda
+        let next = mode != .month
             ? cal.date(byAdding: .day, value: 7 * direction, to: selected)
             : cal.date(byAdding: .month, value: direction, to: selected)
         if let next { selected = cal.startOfDay(for: next) }
@@ -223,7 +243,7 @@ struct CalendarTabView: View {
     }
 
     private func dots(_ items: [Block], faded: Bool) -> some View {
-        let colors = Array(items.prefix(3)).map { categories.category(for: $0).color }
+        let colors = Array(items.prefix(3)).map { categories.displayColor(for: $0) }
         return HStack(spacing: 3) {
             ForEach(Array(colors.enumerated()), id: \.offset) { _, c in
                 Circle().fill(c).frame(width: 5, height: 5).opacity(faded ? 0.45 : 1)
@@ -265,7 +285,7 @@ struct CalendarTabView: View {
                     if index > 0 { Rectangle().fill(Theme.border).frame(height: 1) }
                     Button { editing = block } label: {
                         BlockRow(block: block, now: now,
-                                 color: categories.category(for: block).color,
+                                 color: categories.displayColor(for: block),
                                  steps: store.steps(for: block.id))
                     }
                     .buttonStyle(.plain)
@@ -273,5 +293,139 @@ struct CalendarTabView: View {
             }
             .cardBox(padding: 0)
         }
+    }
+}
+
+// MARK: - Week grid
+
+/// 7 day columns on an hour grid. Overlapping events split their column side by side.
+struct WeekGrid: View {
+    static let labelWidth: CGFloat = 30
+    let days: [Date]
+    let byDay: [Date: [Block]]
+    let color: (Block) -> Color
+    let onTap: (Block) -> Void
+
+    private let hourHeight: CGFloat = 44
+
+    struct Placed {
+        let block: Block
+        let col: Int
+        let cols: Int
+    }
+
+    /// Greedy columns inside each cluster of overlapping events.
+    static func layout(_ items: [Block]) -> [Placed] {
+        var result: [Placed] = []
+        var cluster: [(Block, Int)] = []
+        var columnEnds: [Date] = []
+        var clusterEnd = Date.distantPast
+
+        func flush() {
+            let n = (cluster.map { $0.1 }.max() ?? 0) + 1
+            result += cluster.map { Placed(block: $0.0, col: $0.1, cols: n) }
+            cluster = []
+            columnEnds = []
+        }
+
+        for b in items.sorted(by: { $0.start < $1.start }) {
+            if !cluster.isEmpty && b.start >= clusterEnd { flush() }
+            if let i = columnEnds.firstIndex(where: { $0 <= b.start }) {
+                columnEnds[i] = b.end
+                cluster.append((b, i))
+            } else {
+                columnEnds.append(b.end)
+                cluster.append((b, columnEnds.count - 1))
+            }
+            clusterEnd = max(clusterEnd, b.end)
+        }
+        if !cluster.isEmpty { flush() }
+        return result
+    }
+
+    var body: some View {
+        let cal = Calendar.current
+        let all = days.flatMap { byDay[$0] ?? [] }
+        let earliest = all.map { cal.component(.hour, from: $0.start) }.min() ?? 7
+        let latest = all.map { cal.component(.hour, from: $0.end) + 1 }.max() ?? 22
+        let startHour = min(7, earliest)
+        let endHour = min(24, max(22, latest))
+        let totalHeight = CGFloat(endHour - startHour) * hourHeight
+        let now = Date.now
+
+        GeometryReader { geo in
+            let colW = max(1, (geo.size.width - Self.labelWidth) / 7)
+            ZStack(alignment: .topLeading) {
+                ForEach(startHour...endHour, id: \.self) { h in
+                    let y = CGFloat(h - startHour) * hourHeight
+                    Text(hourLabel(h))
+                        .font(.system(size: 9))
+                        .foregroundStyle(Theme.faint)
+                        .frame(width: Self.labelWidth - 6, alignment: .trailing)
+                        .offset(y: y - 6)
+                    Rectangle()
+                        .fill(Theme.border)
+                        .frame(width: geo.size.width - Self.labelWidth, height: 1)
+                        .offset(x: Self.labelWidth, y: y)
+                }
+                ForEach(1..<7, id: \.self) { i in
+                    Rectangle()
+                        .fill(Theme.border.opacity(0.6))
+                        .frame(width: 1, height: totalHeight)
+                        .offset(x: Self.labelWidth + CGFloat(i) * colW)
+                }
+                ForEach(Array(days.enumerated()), id: \.offset) { dayIndex, day in
+                    ForEach(Self.layout(byDay[day] ?? []), id: \.block.id) { item in
+                        eventCell(item, dayIndex: dayIndex, day: day, colW: colW,
+                                  startHour: startHour, endHour: endHour, now: now)
+                    }
+                }
+                if let todayIndex = days.firstIndex(where: { cal.isDateInToday($0) }) {
+                    let minutes = now.timeIntervalSince(cal.startOfDay(for: now)) / 60
+                    if minutes >= Double(startHour * 60) && minutes <= Double(endHour * 60) {
+                        let y = CGFloat(minutes / 60 - Double(startHour)) * hourHeight
+                        let x = Self.labelWidth + CGFloat(todayIndex) * colW
+                        Rectangle().fill(Theme.red).frame(width: colW, height: 2).offset(x: x, y: y)
+                        Circle().fill(Theme.red).frame(width: 7, height: 7).offset(x: x - 3.5, y: y - 2.5)
+                    }
+                }
+            }
+        }
+        .frame(height: totalHeight + 8)
+    }
+
+    private func eventCell(_ item: Placed, dayIndex: Int, day: Date, colW: CGFloat,
+                           startHour: Int, endHour: Int, now: Date) -> some View {
+        let startMin: Double = max(Double(startHour * 60), item.block.start.timeIntervalSince(day) / 60)
+        let endMin: Double = min(Double(endHour * 60), item.block.end.timeIntervalSince(day) / 60)
+        let top: CGFloat = CGFloat(startMin / 60 - Double(startHour)) * hourHeight
+        let height: CGFloat = max(14, CGFloat((endMin - startMin) / 60) * hourHeight - 2)
+        let width: CGFloat = colW / CGFloat(item.cols)
+        let x: CGFloat = Self.labelWidth + CGFloat(dayIndex) * colW + CGFloat(item.col) * width
+        let past: Bool = item.block.end <= now
+        let c: Color = color(item.block)
+        let lines: Int = max(1, Int(height / 11))
+
+        return Button { onTap(item.block) } label: {
+            Text(item.block.title)
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(past ? Theme.faint : Theme.text)
+                .lineLimit(lines)
+                .padding(.horizontal, 3)
+                .padding(.vertical, 2)
+                .frame(width: max(4, width - 3), height: height, alignment: .topLeading)
+                .background(c.opacity(past ? 0.12 : 0.22))
+                .overlay(alignment: .leading) {
+                    Rectangle().fill(c.opacity(past ? 0.5 : 1)).frame(width: 3)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+        }
+        .buttonStyle(.plain)
+        .offset(x: x + 1, y: top + 1)
+    }
+
+    private func hourLabel(_ h: Int) -> String {
+        let hour12 = h % 12 == 0 ? 12 : h % 12
+        return "\(hour12)\(h < 12 || h == 24 ? "a" : "p")"
     }
 }

@@ -40,7 +40,8 @@ struct CategoryRule: Identifiable, Codable, Hashable {
 final class CategoryStore: ObservableObject {
     static let shared = CategoryStore()
 
-    static let palette = ["#0A84FF", "#BF5AF2", "#30D158", "#FF9F0A", "#FF375F",
+    static let teslaRed = "#E31937"
+    static let palette = ["#E31937", "#0A84FF", "#BF5AF2", "#30D158", "#FF9F0A", "#FF375F",
                           "#64D2FF", "#FFD60A", "#5E5CE6", "#AC8E68", "#8E8E93"]
 
     static let defaultCategories: [Category] = [
@@ -65,11 +66,14 @@ final class CategoryStore: ObservableObject {
     @Published var rules: [CategoryRule] = CategoryStore.defaultRules { didSet { save() } }
     /// Used when no rule matches ("Everything else").
     @Published var fallbackID: String = "personal" { didSet { save() } }
+    /// Per-calendar display color, keyed by calendar name. "category" = follow the category color.
+    @Published var calendarColors: [String: String] = [:] { didSet { save() } }
 
     private struct Snapshot: Codable {
         var categories: [Category]
         var rules: [CategoryRule]
         var fallbackID: String
+        var calendarColors: [String: String]?
     }
 
     private var loading = false
@@ -104,6 +108,24 @@ final class CategoryStore: ObservableObject {
         if let c = category(id: BlockStore.shared.categoryOverrides[block.id]) { return c }
         return ruleCategory(title: block.title, calendarName: block.calendarName)
     }
+
+    // MARK: Calendar colors
+
+    /// The color set for a calendar in Hyperday. Tesla calendars default to Tesla red.
+    func calendarColorHex(_ name: String?) -> String? {
+        guard let name, !name.isEmpty else { return nil }
+        if let hex = calendarColors[name] { return hex == "category" ? nil : hex }
+        return name.lowercased().contains("tesla") ? CategoryStore.teslaRed : nil
+    }
+
+    /// Color shown for a block: manual category > calendar color > category from rules.
+    func displayColorHex(for block: Block) -> String {
+        if let c = category(id: BlockStore.shared.categoryOverrides[block.id]) { return c.colorHex }
+        if block.source == .calendar, let hex = calendarColorHex(block.calendarName) { return hex }
+        return category(for: block).colorHex
+    }
+
+    func displayColor(for block: Block) -> Color { Color(hex: displayColorHex(for: block)) }
 
     // MARK: Editing
 
@@ -141,12 +163,13 @@ final class CategoryStore: ObservableObject {
         categories = snap.categories.isEmpty ? CategoryStore.defaultCategories : snap.categories
         rules = snap.rules
         fallbackID = snap.fallbackID
+        calendarColors = snap.calendarColors ?? [:]
         loading = false
     }
 
     private func save() {
         guard !loading else { return }
-        let snap = Snapshot(categories: categories, rules: rules, fallbackID: fallbackID)
+        let snap = Snapshot(categories: categories, rules: rules, fallbackID: fallbackID, calendarColors: calendarColors)
         guard let data = try? JSONEncoder().encode(snap) else { return }
         try? data.write(to: fileURL, options: .atomic)
     }

@@ -62,7 +62,7 @@ final class LiveActivityManager: ObservableObject {
             steps: BlockStore.shared.steps,
             now: now
         )
-        snap.accentHex = snap.current.map { CategoryStore.shared.category(for: $0).colorHex }
+        snap.accentHex = snap.current.map { CategoryStore.shared.displayColorHex(for: $0) }
         return snap
     }
 
