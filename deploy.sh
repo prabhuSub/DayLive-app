@@ -4,6 +4,23 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Your signing team. Regenerating the project wipes the Team picked in Xcode,
+# so detect it from your Apple Development certificate (or set DEVELOPMENT_TEAM yourself).
+if [[ -z "${DEVELOPMENT_TEAM:-}" && -f .team ]]; then DEVELOPMENT_TEAM=$(<.team); fi
+if [[ -z "${DEVELOPMENT_TEAM:-}" ]]; then
+  DEVELOPMENT_TEAM=$(security find-certificate -c "Apple Development" -p 2>/dev/null \
+    | openssl x509 -noout -subject 2>/dev/null \
+    | sed -n 's/.*OU *= *\([A-Z0-9]\{10\}\).*/\1/p' | head -1)
+fi
+if [[ -z "${DEVELOPMENT_TEAM:-}" ]]; then
+  echo "✗ Couldn't find your signing team. In Xcode: Settings › Accounts › your Apple ID › Personal Team,"
+  echo "  then run:  DEVELOPMENT_TEAM=<10-character ID> ./deploy.sh"
+  exit 1
+fi
+echo "$DEVELOPMENT_TEAM" > .team
+export DEVELOPMENT_TEAM
+echo "› Team $DEVELOPMENT_TEAM"
+
 echo "› Generating Xcode project…"
 xcodegen generate --quiet
 
@@ -11,6 +28,7 @@ echo "› Building…"
 xcodebuild -project DayLive.xcodeproj -scheme DayLive -configuration Debug \
   -destination 'generic/platform=iOS' -derivedDataPath build \
   -allowProvisioningUpdates -allowProvisioningDeviceRegistration \
+  DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" CODE_SIGN_STYLE=Automatic \
   -quiet build
 
 APP=build/Build/Products/Debug-iphoneos/DayLive.app
