@@ -38,6 +38,14 @@ final class LiveActivityManager: ObservableObject {
     }
 
     private var isRefreshing = false
+    private var forceStart = false
+
+    /// One line for the app header explaining the Live Activity state.
+    var statusText: String {
+        if !activitiesEnabled { return "Live Activities are off · open Settings" }
+        if let lastError { return lastError }
+        return isRunning ? "Live on your Lock Screen" : "Not live · tap Go Live"
+    }
     private var pendingRefresh = false
 
     var activitiesEnabled: Bool { ActivityAuthorizationInfo().areActivitiesEnabled }
@@ -66,7 +74,11 @@ final class LiveActivityManager: ObservableObject {
         let running = Self.liveActivities()
         let inForeground = UIApplication.shared.applicationState == .active
 
-        if !snap.hasAnythingLeft {
+        let dayIsOver = !snap.all.isEmpty && !snap.hasAnythingLeft
+        let force = forceStart
+        forceStart = false
+
+        if dayIsOver && !force {
             // Day's over: show "Day complete" briefly, then let iOS dismiss it.
             for a in running { await a.end(content, dismissalPolicy: .default) }
         } else if let activity = running.first {
@@ -78,7 +90,8 @@ final class LiveActivityManager: ObservableObject {
             } else {
                 await activity.update(content)
             }
-        } else if autoStart {
+        } else if force || (autoStart && snap.hasAnythingLeft) {
+            // Auto-start only when there's something to show; "Go Live" always starts.
             request(content)
         }
 
@@ -88,6 +101,7 @@ final class LiveActivityManager: ObservableObject {
 
     func start() async {
         autoStart = true
+        forceStart = true
         await refresh()
     }
 

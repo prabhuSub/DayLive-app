@@ -10,6 +10,8 @@ struct DayLiveApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .preferredColorScheme(.dark)
+                .tint(.white)
                 .environmentObject(store)
                 .environmentObject(activity)
                 .onReceive(NotificationCenter.default.publisher(for: .EKEventStoreChanged)) { _ in

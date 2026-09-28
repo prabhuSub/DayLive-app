@@ -18,9 +18,10 @@ struct DaySnapshot {
     var hasAnythingLeft: Bool { current != nil || next != nil }
 
     func contentState() -> DayActivityAttributes.ContentState {
-        let label = next.map { "Next · \($0.title) at \($0.start.shortTime)" } ?? "Nothing else today"
+        let label = next.map { "Next · \($0.title) at \($0.start.shortTime)" }
+            ?? (all.isEmpty ? "Add a block in DayLive" : "Nothing else today")
 
-        var title = "Day complete"
+        var title = all.isEmpty ? "Nothing planned" : "Day complete"
         var source = BlockSource.free
         var actionID: String?
         var action: BlockAction?
