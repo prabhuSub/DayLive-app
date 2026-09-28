@@ -1,0 +1,21 @@
+[Unit]
+Description=Hyperday push server (Live Activity updates)
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+User=hyperday
+EnvironmentFile=/etc/hyperday-push.env
+WorkingDirectory=/opt/hyperday-push
+# Listens on localhost only; `tailscale serve` publishes it to your tailnet over HTTPS.
+ExecStart=/opt/hyperday-push/.venv/bin/uvicorn --factory hyperday_push.app:app --host 127.0.0.1 --port 8787
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/hyperday-push
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -18,3 +18,9 @@ build/
 
 # Files the Claude desktop app drops into the folder
 Claude outputs/
+
+# push server
+server/**/__pycache__/
+server/.venv/
+*.db
+*.p8
