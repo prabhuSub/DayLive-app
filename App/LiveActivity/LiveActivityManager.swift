@@ -52,6 +52,11 @@ final class LiveActivityManager: ObservableObject {
 
     /// Today's raw blocks: your planned blocks + calendar events (before overrides).
     func todayBlocks(now: Date = .now) -> [Block] {
+        allTodayBlocks(now: now).filter(FocusFilterState.allows)
+    }
+
+    /// Unfiltered (history/stats must not depend on the current Focus).
+    func allTodayBlocks(now: Date = .now) -> [Block] {
         BlockStore.shared.planBlocks(on: now) + CalendarService.shared.events(on: now)
     }
 
@@ -107,7 +112,7 @@ final class LiveActivityManager: ObservableObject {
         }
 
         isRunning = !Self.liveActivities().isEmpty
-        HistoryStore.shared.recordToday(raw: todayBlocks(now: now), now: now)
+        HistoryStore.shared.recordToday(raw: allTodayBlocks(now: now), now: now)
         BackgroundRefresh.schedule(at: snap.nextBoundary)
     }
 

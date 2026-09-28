@@ -14,3 +14,6 @@ build/
 
 # Signing team ID (local)
 .team
+
+# Files the Claude desktop app drops into the folder
+Claude outputs/

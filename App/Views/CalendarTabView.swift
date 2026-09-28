@@ -126,6 +126,7 @@ struct CalendarTabView: View {
             let tasks = store.planBlocks.filter { $0.start >= range.start && $0.start < range.end }
             list += DayEngine.apply(store.overrides, to: tasks)
         }
+        list = list.filter(FocusFilterState.allows)
         return Dictionary(grouping: list.sorted { $0.start < $1.start }) { cal.startOfDay(for: $0.start) }
     }
 
