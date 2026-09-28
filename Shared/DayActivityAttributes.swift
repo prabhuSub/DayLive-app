@@ -12,6 +12,7 @@ enum BlockSource: String, Codable, Hashable {
 enum BlockAction: String, Codable, Hashable {
     case done       // finish the current block early
     case startNext  // in a free gap: start the next block now
+    case checkStep  // current block has steps: check the next unchecked one
 }
 
 struct DayActivityAttributes: ActivityAttributes {
@@ -27,6 +28,8 @@ struct DayActivityAttributes: ActivityAttributes {
         var currentEnd: Date?        // drives the countdown in the expanded Island
         var actionBlockID: String?
         var action: BlockAction?
+        var stepsDone: Int?          // set when the current block has steps
+        var stepsTotal: Int?
     }
 
     var dayStart: Date

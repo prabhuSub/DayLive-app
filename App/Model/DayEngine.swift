@@ -9,6 +9,7 @@ struct DaySnapshot {
     var lanes: [Block]        // non-overlapping blocks = segments in the bar
     var segments: [Double]
     var dayProgress: Double
+    var currentSteps: [Step] = []   // checklist of the current block (drives the bar when non-empty)
 
     /// Next moment the card's content changes. Used as staleDate + background refresh time.
     var nextBoundary: Date? {
@@ -26,11 +27,29 @@ struct DaySnapshot {
         var actionID: String?
         var action: BlockAction?
 
+        var bar = segments
+        var stepsDone: Int?
+        var stepsTotal: Int?
+        var nextStepLine: String?
+
         if let c = current {
             title = c.title
             source = c.source
             actionID = c.id
             action = .done
+            if !currentSteps.isEmpty {
+                // Steps rule: the bar becomes this block's checklist; the button checks the next step.
+                let done = currentSteps.filter(\.done).count
+                bar = currentSteps.map { $0.done ? 1 : 0 }
+                stepsDone = done
+                stepsTotal = currentSteps.count
+                if let nextStep = currentSteps.first(where: { !$0.done }) {
+                    action = .checkStep
+                    nextStepLine = "→ \(nextStep.title)"
+                } else {
+                    nextStepLine = "All \(currentSteps.count) steps done"
+                }
+            }
         } else if let n = next {
             title = "Free until \(n.start.shortTime)"
             actionID = n.id
@@ -40,19 +59,27 @@ struct DaySnapshot {
         return .init(
             label: label,
             title: title,
-            also: also.map { "also: \($0.title) · \($0.start.shortTime)–\($0.end.shortTime)" },
+            // Overlap wins the second line; otherwise show the next step.
+            also: also.map { "also: \($0.title) · \($0.start.shortTime)–\($0.end.shortTime)" } ?? nextStepLine,
             source: source,
-            segments: segments,
+            segments: bar,
             dayProgress: dayProgress,
             currentEnd: current?.end,
             actionBlockID: actionID,
-            action: action
+            action: action,
+            stepsDone: stepsDone,
+            stepsTotal: stepsTotal
         )
     }
 }
 
 enum DayEngine {
-    static func snapshot(of raw: [Block], overrides: [String: BlockOverride], now: Date) -> DaySnapshot {
+    static func snapshot(
+        of raw: [Block],
+        overrides: [String: BlockOverride],
+        steps: [String: [Step]] = [:],
+        now: Date
+    ) -> DaySnapshot {
         let blocks = apply(overrides, to: raw).sorted {
             $0.start == $1.start ? $0.duration > $1.duration : $0.start < $1.start
         }
@@ -82,7 +109,8 @@ enum DayEngine {
             next: next,
             lanes: lanes,
             segments: lanes.map { progress(of: $0, at: now) },
-            dayProgress: dayProgress
+            dayProgress: dayProgress,
+            currentSteps: current.map { steps[$0.id] ?? [] } ?? []
         )
     }
 

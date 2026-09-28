@@ -29,6 +29,7 @@ struct BlockActionIntent: LiveActivityIntent {
             switch action {
             case .done:      BlockStore.shared.finish(blockID: id, at: .now)
             case .startNext: BlockStore.shared.startEarly(blockID: id, at: .now)
+            case .checkStep: BlockStore.shared.checkNextStep(blockID: id)
             }
         }
         await LiveActivityManager.shared.refresh()

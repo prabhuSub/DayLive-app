@@ -52,7 +52,12 @@ final class LiveActivityManager: ObservableObject {
 
     func snapshot(now: Date = .now) -> DaySnapshot {
         let blocks = BlockStore.shared.planBlocks(on: now) + CalendarService.shared.events(on: now)
-        return DayEngine.snapshot(of: blocks, overrides: BlockStore.shared.overrides, now: now)
+        return DayEngine.snapshot(
+            of: blocks,
+            overrides: BlockStore.shared.overrides,
+            steps: BlockStore.shared.steps,
+            now: now
+        )
     }
 
     /// Recompute the day and push it to the Live Activity. Safe to call often.

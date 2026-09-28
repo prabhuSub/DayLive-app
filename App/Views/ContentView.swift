@@ -18,6 +18,7 @@ struct ContentView: View {
     @Environment(\.openURL) private var openURL
 
     @State private var showingAdd = false
+    @State private var editing: Block?
     @State private var now = Date.now
     @State private var calendarGranted = CalendarService.shared.hasAccess
 
@@ -45,6 +46,13 @@ struct ContentView: View {
         .sheet(isPresented: $showingAdd) {
             QuickAddSheet()
                 .presentationDetents([.medium])
+        }
+        .sheet(item: $editing) { block in
+            BlockEditorSheet(block: block, steps: store.steps(for: block.id)) {
+                store.delete(id: block.id)
+                Task { await activity.refresh() }
+            }
+            .presentationDetents([.large])
         }
         .onReceive(tick) { now = $0 }
         .task {
@@ -138,15 +146,22 @@ struct ContentView: View {
                 .padding(.bottom, 4)
 
             if snap.all.isEmpty {
-                Text("Nothing planned. Tap Add to plan a block.")
+                Text("Nothing planned. Tap Add to plan a block, then tap it to add steps.")
                     .font(.system(size: 15))
                     .foregroundStyle(Theme.dim)
                     .padding(.vertical, 14)
             }
 
             ForEach(snap.all) { block in
-                TimelineRow(block: block, now: now)
+                Button {
+                    editing = block
+                } label: {
+                    TimelineRow(block: block, now: now, steps: store.steps(for: block.id))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
                     .contextMenu {
+                        Button("Edit", systemImage: "pencil") { editing = block }
                         if block.source == .plan {
                             Button("Delete", role: .destructive) {
                                 store.delete(id: block.id)
@@ -200,6 +215,13 @@ private struct PreviewCard: View {
 private struct TimelineRow: View {
     let block: Block
     let now: Date
+    var steps: [Step] = []
+
+    private var detail: String {
+        var parts = ["\(block.start.shortTime) – \(block.end.shortTime)", block.source == .calendar ? "Calendar" : "My plan"]
+        if !steps.isEmpty { parts.append("\(steps.filter(\.done).count)/\(steps.count) steps") }
+        return parts.joined(separator: " · ")
+    }
 
     var body: some View {
         let isNow = block.contains(now)
@@ -214,7 +236,7 @@ private struct TimelineRow: View {
                 Text(block.title)
                     .font(.system(size: 17, weight: isNow ? .semibold : .regular))
                     .foregroundStyle(done ? Theme.faint : Theme.text)
-                Text("\(block.start.shortTime) – \(block.end.shortTime) · \(block.source == .calendar ? "Calendar" : "My plan")")
+                Text(detail)
                     .font(.system(size: 13))
                     .foregroundStyle(Theme.faint)
             }

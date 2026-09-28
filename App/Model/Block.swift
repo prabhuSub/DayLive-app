@@ -13,6 +13,13 @@ struct Block: Identifiable, Codable, Hashable {
     func contains(_ date: Date) -> Bool { start <= date && date < end }
 }
 
+/// A checklist item inside a block. Checked steps fill the green bar on the Live Activity.
+struct Step: Identifiable, Codable, Hashable {
+    var id: String = UUID().uuidString
+    var title: String
+    var done: Bool = false
+}
+
 /// Done / Start next never edits your calendar. It records an override instead.
 struct BlockOverride: Codable, Hashable {
     var start: Date?

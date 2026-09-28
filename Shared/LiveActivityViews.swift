@@ -151,8 +151,7 @@ struct BlockActionButton: View {
     var body: some View {
         if let id = state.actionBlockID, let action = state.action {
             Button(intent: BlockActionIntent(blockID: id, action: action)) {
-                Label(action == .done ? "Done" : "Start next",
-                      systemImage: action == .done ? "checkmark" : "forward.fill")
+                Label(buttonTitle(action), systemImage: buttonSymbol(action))
                     .font(.system(size: 14, weight: .semibold))
                     .padding(.horizontal, 14)
                     .frame(height: 36)
@@ -160,6 +159,22 @@ struct BlockActionButton: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(.white)
+        }
+    }
+
+    private func buttonTitle(_ action: BlockAction) -> String {
+        switch action {
+        case .done:      return "Done"
+        case .startNext: return "Start next"
+        case .checkStep: return "Step \((state.stepsDone ?? 0) + 1)/\(state.stepsTotal ?? 0)"
+        }
+    }
+
+    private func buttonSymbol(_ action: BlockAction) -> String {
+        switch action {
+        case .done:      return "checkmark"
+        case .startNext: return "forward.fill"
+        case .checkStep: return "checkmark.circle"
         }
     }
 }
