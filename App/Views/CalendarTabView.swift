@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Calendar tab: every calendar on the phone + your Hyperday tasks. Agenda (week) and Month.
 struct CalendarTabView: View {
@@ -54,7 +55,12 @@ struct CalendarTabView: View {
                         } else if mode == .week {
                             WeekGrid(days: weekDays, byDay: byDay,
                                      color: { categories.displayColor(for: $0) },
-                                     onTap: { editing = $0 })
+                                     onTap: { editing = $0 },
+                                     onMove: { block, start, end in
+                                         let minutes = Int(end.timeIntervalSince(start) / 60)
+                                         store.update(id: block.id, title: block.title, start: start, minutes: minutes)
+                                         Task { await LiveActivityManager.shared.refresh() }
+                                     })
                                 .padding(.vertical, 12)
                                 .padding(.trailing, 8)
                                 .cardBox(padding: 0)
@@ -327,8 +333,52 @@ struct WeekGrid: View {
     let byDay: [Date: [Block]]
     let color: (Block) -> Color
     let onTap: (Block) -> Void
+    /// Called after a planned block is dragged (move) or its bottom handle pulled (resize). Calendar events never move.
+    var onMove: ((Block, Date, Date) -> Void)? = nil
 
     private let hourHeight: CGFloat = 44
+    private static let snap = 15   // minutes
+
+    private enum DragMode { case move, resize }
+    private struct DragState {
+        var id: String
+        var mode: DragMode
+        var translation: CGSize
+    }
+    @State private var drag: DragState?
+    @State private var selectedID: String?
+
+    private func snappedMinutes(_ dy: CGFloat) -> Int {
+        Int((Double(dy / hourHeight) * 60 / Double(Self.snap)).rounded()) * Self.snap
+    }
+
+    private func dayShift(_ dx: CGFloat, colW: CGFloat, dayIndex: Int) -> Int {
+        min(max(Int((dx / colW).rounded()), -dayIndex), days.count - 1 - dayIndex)
+    }
+
+    /// Where the block would land for a given drag.
+    private func preview(_ b: Block, mode: DragMode, translation: CGSize, colW: CGFloat, dayIndex: Int) -> (Date, Date) {
+        let mins = TimeInterval(snappedMinutes(translation.height) * 60)
+        switch mode {
+        case .move:
+            let shifted = Calendar.current.date(byAdding: .day,
+                                                value: dayShift(translation.width, colW: colW, dayIndex: dayIndex),
+                                                to: b.start) ?? b.start
+            let start = shifted.addingTimeInterval(mins)
+            return (start, start.addingTimeInterval(b.end.timeIntervalSince(b.start)))
+        case .resize:
+            return (b.start, max(b.start.addingTimeInterval(TimeInterval(Self.snap * 60)), b.end.addingTimeInterval(mins)))
+        }
+    }
+
+    private func commit(_ b: Block, mode: DragMode, translation: CGSize, colW: CGFloat, dayIndex: Int) {
+        let (s, e) = preview(b, mode: mode, translation: translation, colW: colW, dayIndex: dayIndex)
+        drag = nil
+        guard s != b.start || e != b.end else { return }   // no change: keep it selected for resizing
+        selectedID = nil
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        onMove?(b, s, e)
+    }
 
     struct Placed {
         let block: Block
@@ -416,34 +466,117 @@ struct WeekGrid: View {
         .frame(height: totalHeight + 8)
     }
 
+    @ViewBuilder
     private func eventCell(_ item: Placed, dayIndex: Int, day: Date, colW: CGFloat,
                            startHour: Int, endHour: Int, now: Date) -> some View {
-        let startMin: Double = max(Double(startHour * 60), item.block.start.timeIntervalSince(day) / 60)
-        let endMin: Double = min(Double(endHour * 60), item.block.end.timeIntervalSince(day) / 60)
-        let top: CGFloat = CGFloat(startMin / 60 - Double(startHour)) * hourHeight
-        let height: CGFloat = max(14, CGFloat((endMin - startMin) / 60) * hourHeight - 2)
+        let b = item.block
+        let movable = onMove != nil && b.source == .plan
         let width: CGFloat = colW / CGFloat(item.cols)
-        let x: CGFloat = Self.labelWidth + CGFloat(dayIndex) * colW + CGFloat(item.col) * width
-        let past: Bool = item.block.end <= now
-        let c: Color = color(item.block)
-        let lines: Int = max(1, Int(height / 11))
+        let baseX: CGFloat = Self.labelWidth + CGFloat(dayIndex) * colW + CGFloat(item.col) * width
+        let frame = cellFrame(start: b.start, end: b.end, day: day, startHour: startHour, endHour: endHour)
+        let active = drag?.id == b.id ? drag : nil
+        let selected = movable && (selectedID == b.id || active != nil)
 
-        return Button { onTap(item.block) } label: {
-            Text(item.block.title)
-                .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(past ? Theme.faint : Theme.text)
-                .lineLimit(lines)
-                .padding(.horizontal, 3)
-                .padding(.vertical, 2)
-                .frame(width: max(4, width - 3), height: height, alignment: .topLeading)
-                .background(c.opacity(past ? 0.12 : 0.22))
-                .overlay(alignment: .leading) {
-                    Rectangle().fill(c.opacity(past ? 0.5 : 1)).frame(width: 3)
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 3))
+        // Where it will land (same as where it is when not dragging).
+        let landing: (Date, Date) = active.map { preview(b, mode: $0.mode, translation: $0.translation, colW: colW, dayIndex: dayIndex) } ?? (b.start, b.end)
+        let ps = landing.0
+        let pe = landing.1
+        let shift = active?.mode == .move ? dayShift(active!.translation.width, colW: colW, dayIndex: dayIndex) : 0
+        let newDay = Calendar.current.date(byAdding: .day, value: shift, to: day) ?? day
+        let pf = active == nil ? frame : cellFrame(start: ps, end: pe, day: newDay, startHour: startHour, endHour: endHour)
+        let px = baseX + CGFloat(shift) * colW
+
+        if active != nil {
+            // Dashed ghost where it was.
+            RoundedRectangle(cornerRadius: 3)
+                .strokeBorder(Theme.muted, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                .frame(width: max(4, width - 3), height: frame.height)
+                .offset(x: baseX + 1, y: frame.top + 1)
         }
-        .buttonStyle(.plain)
-        .offset(x: x + 1, y: top + 1)
+
+        // One view for the block, dragging or not, so the gesture isn't cancelled mid-drag.
+        cellBody(b, height: pf.height, width: width, past: active == nil && b.end <= now, selected: selected)
+            .shadow(color: .black.opacity(active != nil ? 0.25 : 0), radius: 6, y: 3)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if selectedID != nil { selectedID = nil } else { onTap(b) }
+            }
+            .gesture(moveGesture(b, colW: colW, dayIndex: dayIndex), including: movable ? .all : .subviews)
+            .offset(x: px + 1, y: pf.top + 1)
+            .zIndex(active != nil ? 1 : 0)
+
+        if active != nil {
+            Text("\(ps.shortTime) – \(pe.shortTime)")
+                .font(.system(size: 10, weight: .bold).monospacedDigit())
+                .foregroundStyle(Theme.bg)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(Theme.text, in: Capsule())
+                .fixedSize()
+                .offset(x: min(max(Self.labelWidth, px - 20), Self.labelWidth + colW * 5), y: max(0, pf.top - 22))
+                .zIndex(2)
+        }
+
+        if selected {
+            // Resize handle on the bottom edge.
+            let f = pf
+            if active == nil || active?.mode == .resize {
+                Capsule()
+                    .fill(Theme.text)
+                    .frame(width: 18, height: 5)
+                    .padding(8)
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                            .onChanged { v in drag = DragState(id: b.id, mode: .resize, translation: v.translation) }
+                            .onEnded { v in commit(b, mode: .resize, translation: v.translation, colW: colW, dayIndex: dayIndex) }
+                    )
+                    .offset(x: baseX + width / 2 - 16, y: f.top + f.height - 10)
+            }
+        }
+    }
+
+    private func moveGesture(_ b: Block, colW: CGFloat, dayIndex: Int) -> some Gesture {
+        LongPressGesture(minimumDuration: 0.35)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
+            .onChanged { value in
+                guard case .second(true, let d) = value else { return }
+                if drag == nil { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
+                selectedID = b.id
+                drag = DragState(id: b.id, mode: .move, translation: d?.translation ?? .zero)
+            }
+            .onEnded { value in
+                guard case .second(true, let d) = value else { drag = nil; return }
+                commit(b, mode: .move, translation: d?.translation ?? .zero, colW: colW, dayIndex: dayIndex)
+            }
+    }
+
+    private func cellFrame(start: Date, end: Date, day: Date, startHour: Int, endHour: Int) -> (top: CGFloat, height: CGFloat) {
+        let dayStart = Calendar.current.startOfDay(for: day)
+        let startMin: Double = max(Double(startHour * 60), start.timeIntervalSince(dayStart) / 60)
+        let endMin: Double = min(Double(endHour * 60), end.timeIntervalSince(dayStart) / 60)
+        let top = CGFloat(startMin / 60 - Double(startHour)) * hourHeight
+        let height = max(14, CGFloat((endMin - startMin) / 60) * hourHeight - 2)
+        return (top, height)
+    }
+
+    private func cellBody(_ b: Block, height: CGFloat, width: CGFloat, past: Bool, selected: Bool) -> some View {
+        let c: Color = color(b)
+        return Text(b.title)
+            .font(.system(size: 9, weight: .semibold))
+            .foregroundStyle(past ? Theme.faint : Theme.text)
+            .lineLimit(max(1, Int(height / 11)))
+            .padding(.horizontal, 3)
+            .padding(.vertical, 2)
+            .frame(width: max(4, width - 3), height: height, alignment: .topLeading)
+            .background(c.opacity(past ? 0.12 : (selected ? 0.4 : 0.22)))
+            .overlay(alignment: .leading) {
+                Rectangle().fill(c.opacity(past ? 0.5 : 1)).frame(width: 3)
+            }
+            .overlay {
+                if selected { RoundedRectangle(cornerRadius: 3).strokeBorder(c, lineWidth: 1.5) }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 3))
     }
 
     private func hourLabel(_ h: Int) -> String {
