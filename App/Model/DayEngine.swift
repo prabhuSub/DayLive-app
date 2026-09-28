@@ -70,7 +70,8 @@ struct DaySnapshot {
             action: action,
             stepsDone: stepsDone,
             stepsTotal: stepsTotal,
-            accentHex: current == nil ? nil : accentHex
+            accentHex: current == nil ? nil : accentHex,
+            alsoIsStep: also == nil && nextStepLine != nil
         )
     }
 }

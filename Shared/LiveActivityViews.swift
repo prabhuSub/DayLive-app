@@ -49,10 +49,21 @@ struct LockScreenCard: View {
                         .font(.system(size: 23, weight: .bold))
                         .lineLimit(1)
                     if let also = state.also {
-                        Text(also)
-                            .font(.system(size: 13))
-                            .foregroundStyle(.white.opacity(0.8))
-                            .lineLimit(1)
+                        if state.alsoIsStep == true {
+                            // Next step: grey pill, white text
+                            Text(also)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .background(Color(white: 0.45).opacity(0.55), in: Capsule())
+                        } else {
+                            Text(also)
+                                .font(.system(size: 13))
+                                .foregroundStyle(.white.opacity(0.8))
+                                .lineLimit(1)
+                        }
                     }
                 }
                 Spacer(minLength: 0)

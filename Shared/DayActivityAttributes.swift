@@ -31,6 +31,7 @@ struct DayActivityAttributes: ActivityAttributes {
         var stepsDone: Int?          // set when the current block has steps
         var stepsTotal: Int?
         var accentHex: String?       // live block's category color, e.g. "#30D158"
+        var alsoIsStep: Bool?        // true when the second line is the next step (drawn as a grey pill)
     }
 
     var dayStart: Date
