@@ -7,6 +7,28 @@ struct DayEntry: TimelineEntry {
     let date: Date
     let day: WidgetDay?
     var needsAppGroup: Bool = false
+    var metric: CircleMetric = .nextStart
+}
+
+/// Entries at every block start/end today, plus every 5 minutes for the next 2 hours
+/// (the Lock Screen widgets show minutes left, which can't tick on their own).
+func dayTimeline(metric: CircleMetric = .nextStart) -> Timeline<DayEntry> {
+    let now = Date.now
+    let day = WidgetShared.load()
+    var dates: Set<Date> = [now]
+    for b in day?.todays(now) ?? [] {
+        if b.start > now { dates.insert(b.start) }
+        if b.end > now { dates.insert(b.end) }
+    }
+    let minute = Calendar.current.component(.minute, from: now)
+    let firstTick = Calendar.current.date(bySetting: .second, value: 0, of: now)?
+        .addingTimeInterval(Double(5 - minute % 5) * 60) ?? now
+    for i in 0..<24 { dates.insert(firstTick.addingTimeInterval(Double(i) * 300)) }
+    let entries = dates.sorted().prefix(80).map {
+        DayEntry(date: $0, day: day, needsAppGroup: WidgetShared.fileURL == nil, metric: metric)
+    }
+    let tomorrow = Calendar.current.startOfDay(for: now).addingTimeInterval(86_400 + 60)
+    return Timeline(entries: Array(entries), policy: .after(min(tomorrow, now.addingTimeInterval(2 * 3600))))
 }
 
 struct DayProvider: TimelineProvider {
@@ -20,22 +42,8 @@ struct DayProvider: TimelineProvider {
                             needsAppGroup: WidgetShared.fileURL == nil))
     }
 
-    /// One entry at every block start/end today, plus every 15 minutes for the progress ring.
     func getTimeline(in context: Context, completion: @escaping (Timeline<DayEntry>) -> Void) {
-        let now = Date.now
-        let day = WidgetShared.load()
-        var dates: Set<Date> = [now]
-        for b in day?.todays(now) ?? [] {
-            if b.start > now { dates.insert(b.start) }
-            if b.end > now { dates.insert(b.end) }
-        }
-        for i in 1...8 { dates.insert(now.addingTimeInterval(Double(i) * 900)) }
-        let entries = dates.sorted().prefix(60).map {
-            DayEntry(date: $0, day: day, needsAppGroup: WidgetShared.fileURL == nil)
-        }
-        let tomorrow = Calendar.current.startOfDay(for: now).addingTimeInterval(86_400 + 60)
-        let reload = min(tomorrow, now.addingTimeInterval(2 * 3600))
-        completion(Timeline(entries: Array(entries), policy: .after(reload)))
+        completion(dayTimeline())
     }
 }
 
@@ -48,7 +56,7 @@ struct HyperdayTodayWidget: Widget {
         }
         .configurationDisplayName("Hyperday")
         .description("What's on now and what's next.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryCircular])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
 
@@ -58,20 +66,17 @@ struct HyperdayWidgetView: View {
 
     var body: some View {
         Group {
-            if entry.day == nil && family != .accessoryCircular {
+            if entry.day == nil {
                 EmptyWidget(needsAppGroup: entry.needsAppGroup)
             } else {
                 switch family {
                 case .systemMedium: MediumWidget(entry: entry)
                 case .systemLarge: LargeWidget(entry: entry)
-                case .accessoryCircular: CircularWidget(entry: entry)
                 default: SmallWidget(entry: entry)
                 }
             }
         }
-        .containerBackground(for: .widget) {
-            if family == .accessoryCircular { Color.clear } else { Color(UIColor.systemBackground) }
-        }
+        .containerBackground(for: .widget) { Color(UIColor.systemBackground) }
     }
 }
 
@@ -253,26 +258,6 @@ private struct LargeWidget: View {
                 Spacer(minLength: 0)
             }
         }
-    }
-}
-
-private struct CircularWidget: View {
-    let entry: DayEntry
-
-    var body: some View {
-        let day = entry.day ?? WidgetDay(day: entry.date, blocks: [])
-        let next = day.upcoming(at: entry.date, limit: 1).first
-        Gauge(value: day.progress(at: entry.date)) {
-            Text("Day")
-        } currentValueLabel: {
-            if let next {
-                Text(next.start.formatted(.dateTime.hour(.defaultDigits(amPM: .omitted)).minute()))
-            } else {
-                Image(systemName: "checkmark")
-            }
-        }
-        .gaugeStyle(.accessoryCircularCapacity)
-        .widgetAccentable()
     }
 }
 

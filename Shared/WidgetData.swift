@@ -10,6 +10,7 @@ struct WidgetBlock: Codable, Hashable, Identifiable {
     var stepsDone: Int
     var stepsTotal: Int
     var detail: String        // "Tesla" / "My plan"
+    var nextStep: String? = nil   // first unchecked step, for the Lock Screen "Now" widget
 }
 
 struct WidgetDay: Codable, Equatable {
@@ -38,7 +39,7 @@ struct WidgetDay: Codable, Equatable {
         func t(_ m: Double) -> Date { now.addingTimeInterval(m * 60) }
         return WidgetDay(day: now, blocks: [
             WidgetBlock(id: "1", title: "Commute", start: t(-180), end: t(-135), colorHex: "#64D2FF", stepsDone: 0, stepsTotal: 0, detail: "My plan"),
-            WidgetBlock(id: "2", title: "Deep Work — ORBIT AI", start: t(-34), end: t(86), colorHex: "#30D158", stepsDone: 4, stepsTotal: 6, detail: "My plan"),
+            WidgetBlock(id: "2", title: "Deep Work — ORBIT AI", start: t(-34), end: t(86), colorHex: "#30D158", stepsDone: 4, stepsTotal: 6, detail: "My plan", nextStep: "Write eval prompts"),
             WidgetBlock(id: "3", title: "Standup", start: t(26), end: t(41), colorHex: "#E31937", stepsDone: 0, stepsTotal: 0, detail: "Tesla"),
             WidgetBlock(id: "4", title: "Lunch", start: t(146), end: t(191), colorHex: "#64D2FF", stepsDone: 0, stepsTotal: 0, detail: "My plan"),
             WidgetBlock(id: "5", title: "Gym — Legs", start: t(506), end: t(566), colorHex: "#FF9F0A", stepsDone: 0, stepsTotal: 4, detail: "My plan"),
@@ -49,6 +50,9 @@ struct WidgetDay: Codable, Equatable {
 enum WidgetShared {
     static let appGroup = "group.com.prabhu.daylive"
     static let kind = "HyperdayToday"
+    static let nowKind = "HyperdayLockNow"
+    static let dayKind = "HyperdayLockDay"
+    static let circleKind = "HyperdayLockCircle"
 
     /// nil when the App Group isn't available (e.g. a free Apple ID).
     static var fileURL: URL? {

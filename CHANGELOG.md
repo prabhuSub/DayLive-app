@@ -3,7 +3,8 @@
 ## Unreleased
 
 ### Added
-- **Widgets:** Home Screen small / medium / large, Lock Screen circular ring, and StandBy (small).
+- **Widgets:** Home Screen small / medium / large and StandBy (small).
+- **Lock Screen widgets:** Now (rectangular), Day strip (rectangular), and a configurable Circle (time left / steps / next start / blocks left).
 - **Apple Watch:** a Smart Stack card for the Live Activity with the time left, next, the bar and the Step / Done button.
 - **Siri & Shortcuts:** "What's next", "Start my day", "I'm done" and "Start Deep Work" (90 min).
 - **Focus filter:** show everything, only work, only personal, or nothing while a Focus is on.

@@ -74,7 +74,8 @@ DayLive/
 │   └── WidgetData.swift              # today's blocks handed to widgets via the App Group
 ├── Widget/                      # Widget extension (Live Activity UI)
 │   ├── DayLiveWidget.swift      # Live Activity + Dynamic Island + Watch Smart Stack
-│   ├── HyperdayWidgets.swift    # Home Screen / Lock Screen / StandBy widgets
+│   ├── HyperdayWidgets.swift    # Home Screen / StandBy widgets + shared timeline
+│   ├── LockScreenWidgets.swift  # Lock Screen: Now, Day strip, Circle (configurable)
 │   └── Assets.xcassets          # HyperdayMark icon for the card
 └── docs/                        # privacy, architecture, images
 ```

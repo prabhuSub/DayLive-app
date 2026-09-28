@@ -128,14 +128,15 @@ final class LiveActivityManager: ObservableObject {
                 id: b.id, title: b.title, start: b.start, end: b.end,
                 colorHex: CategoryStore.shared.displayColorHex(for: b),
                 stepsDone: steps.filter(\.done).count, stepsTotal: steps.count,
-                detail: b.source == .calendar ? (b.calendarName ?? "Calendar") : "My plan"
+                detail: b.source == .calendar ? (b.calendarName ?? "Calendar") : "My plan",
+                nextStep: steps.first { !$0.done }?.title
             )
         }
         let day = WidgetDay(day: now, blocks: blocks)
         guard day != lastWidgetDay else { return }
         lastWidgetDay = day
         if WidgetShared.save(day) {
-            WidgetCenter.shared.reloadTimelines(ofKind: WidgetShared.kind)
+            WidgetCenter.shared.reloadAllTimelines()
         }
     }
 

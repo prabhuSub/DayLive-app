@@ -7,6 +7,9 @@ struct DayLiveWidgetBundle: WidgetBundle {
     var body: some Widget {
         DayLiveActivityWidget()
         HyperdayTodayWidget()
+        HyperdayNowWidget()
+        HyperdayDayWidget()
+        HyperdayCircleWidget()
     }
 }
 
