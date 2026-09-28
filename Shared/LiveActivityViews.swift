@@ -37,14 +37,38 @@ struct LockScreenCard: View {
     let state: DayActivityAttributes.ContentState
     var isStale: Bool = false
 
+    /// "Next · Standup at 10:30 PM" -> "Next: Standup 10:30 PM" (fits the top row)
+    private var nextText: String {
+        if isStale { return "Out of date · tap to refresh" }
+        return state.label
+            .replacingOccurrences(of: "Next · ", with: "Next: ")
+            .replacingOccurrences(of: " at ", with: " ")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
+            // Top row (like Tesla's card): [app icon] 26:10 left ······ Next: Standup 10:30 PM
+            HStack(spacing: 7) {
+                AppMark(size: 20)
+                if let end = state.currentEnd, end > Date.now {
+                    HStack(spacing: 3) {
+                        Text(timerInterval: Date.now...end, countsDown: true)
+                            .monospacedDigit()
+                            .frame(maxWidth: 52, alignment: .leading)
+                        Text("left")
+                    }
+                    .font(.system(size: 14, weight: .semibold))
+                    .fixedSize()
+                }
+                Spacer(minLength: 6)
+                Text(nextText)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.72))
+                    .lineLimit(1)
+            }
+
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(isStale ? "Out of date · tap to refresh" : state.label)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.78))
-                        .lineLimit(1)
                     Text(state.title)
                         .font(.system(size: 23, weight: .bold))
                         .lineLimit(1)
@@ -69,16 +93,32 @@ struct LockScreenCard: View {
                 Spacer(minLength: 0)
                 SourceIcon(source: state.source, size: 44, tint: state.source == .free ? nil : state.accentColor)
             }
+            .padding(.top, 2)
+
             HStack(spacing: 12) {
                 SegmentBar(segments: state.segments, accent: state.accentColor, height: 6)
-                BlockActionButton(state: state)
+                BlockActionButton(state: state)   // Step n/N is always yellow, never the category color
             }
-            .padding(.top, 8)
+            .padding(.top, 6)
         }
         .foregroundStyle(.white)
         .padding(.leading, 16)
         .padding(.trailing, 14)
-        .padding(.vertical, 14)
+        .padding(.vertical, 13)
+    }
+}
+
+/// Small Hyperday app icon (asset "HyperdayMark"), like the Tesla logo on Tesla's card.
+struct AppMark: View {
+    var size: CGFloat = 20
+
+    var body: some View {
+        Image("HyperdayMark")
+            .resizable()
+            .interpolation(.high)
+            .frame(width: size, height: size)
+            .clipShape(RoundedRectangle(cornerRadius: size * 0.24, style: .continuous))
+            .accessibilityLabel("Hyperday")
     }
 }
 
