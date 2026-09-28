@@ -48,6 +48,7 @@ targets:
       - Shared/DayActivityAttributes.swift
       - Shared/BlockActionIntent.swift
       - Shared/LiveActivityViews.swift
+      - Shared/WidgetData.swift
     info:
       path: Widget/Info.plist
       properties:

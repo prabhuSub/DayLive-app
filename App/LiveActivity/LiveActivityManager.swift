@@ -3,6 +3,7 @@ import ActivityKit
 import BackgroundTasks
 import Foundation
 import UIKit
+import WidgetKit
 
 /// Starts, updates and restarts the one Hyperday Live Activity.
 @MainActor
@@ -47,6 +48,7 @@ final class LiveActivityManager: ObservableObject {
         return isRunning ? "Live on your Lock Screen" : "Not live · tap Go Live"
     }
     private var pendingRefresh = false
+    private var lastWidgetDay: WidgetDay?
 
     var activitiesEnabled: Bool { ActivityAuthorizationInfo().areActivitiesEnabled }
 
@@ -113,7 +115,28 @@ final class LiveActivityManager: ObservableObject {
 
         isRunning = !Self.liveActivities().isEmpty
         HistoryStore.shared.recordToday(raw: allTodayBlocks(now: now), now: now)
+        writeWidgetDay(snap, now: now)
         BackgroundRefresh.schedule(at: snap.nextBoundary)
+    }
+
+    /// Hand today's blocks to the Home Screen widgets (only when they changed, to save reloads).
+    private func writeWidgetDay(_ snap: DaySnapshot, now: Date) {
+        let store = BlockStore.shared
+        let blocks = snap.all.map { b -> WidgetBlock in
+            let steps = store.steps(for: b.id)
+            return WidgetBlock(
+                id: b.id, title: b.title, start: b.start, end: b.end,
+                colorHex: CategoryStore.shared.displayColorHex(for: b),
+                stepsDone: steps.filter(\.done).count, stepsTotal: steps.count,
+                detail: b.source == .calendar ? (b.calendarName ?? "Calendar") : "My plan"
+            )
+        }
+        let day = WidgetDay(day: now, blocks: blocks)
+        guard day != lastWidgetDay else { return }
+        lastWidgetDay = day
+        if WidgetShared.save(day) {
+            WidgetCenter.shared.reloadTimelines(ofKind: WidgetShared.kind)
+        }
     }
 
     func start() async {

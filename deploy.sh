@@ -24,12 +24,30 @@ echo "› Team $DEVELOPMENT_TEAM"
 echo "› Generating Xcode project…"
 xcodegen generate --quiet
 
+# Home Screen widgets share data through an App Group, which needs the paid Apple Developer Program.
+# Try with it first; if signing refuses (free Apple ID), build without it and remember that in .no-app-group.
+build() {
+  xcodebuild -project DayLive.xcodeproj -scheme DayLive -configuration Debug \
+    -destination 'generic/platform=iOS' -derivedDataPath build \
+    -allowProvisioningUpdates -allowProvisioningDeviceRegistration \
+    DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" CODE_SIGN_STYLE=Automatic \
+    "$@" -quiet build
+}
+
 echo "› Building…"
-xcodebuild -project DayLive.xcodeproj -scheme DayLive -configuration Debug \
-  -destination 'generic/platform=iOS' -derivedDataPath build \
-  -allowProvisioningUpdates -allowProvisioningDeviceRegistration \
-  DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" CODE_SIGN_STYLE=Automatic \
-  -quiet build
+LOG=$(mktemp)
+if [[ -f .no-app-group || -n "${NO_APP_GROUP:-}" ]]; then
+  build
+elif ! build CODE_SIGN_ENTITLEMENTS=Hyperday.entitlements 2>&1 | tee "$LOG"; then   # pipefail: xcodebuild's status
+  if grep -qiE "app group|application-groups|Personal development teams" "$LOG"; then
+    echo "› Your Apple ID can't use App Groups (free account). Building without Home Screen widgets…"
+    touch .no-app-group
+    build
+  else
+    rm -f "$LOG"; exit 1
+  fi
+fi
+rm -f "$LOG"
 
 APP=build/Build/Products/Debug-iphoneos/DayLive.app
 
