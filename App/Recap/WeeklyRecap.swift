@@ -74,7 +74,7 @@ private func hoursText(_ h: Double) -> String {
 @MainActor
 final class RecapCenter: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     static let shared = RecapCenter()
-    static let id = "hyperday.weekly-recap"
+    nonisolated static let id = "hyperday.weekly-recap"
 
     /// Set when the notification is tapped; RootView shows the recap full screen.
     @Published var showing = false
