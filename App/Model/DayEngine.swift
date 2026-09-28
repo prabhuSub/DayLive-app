@@ -10,6 +10,7 @@ struct DaySnapshot {
     var segments: [Double]
     var dayProgress: Double
     var currentSteps: [Step] = []   // checklist of the current block (drives the bar when non-empty)
+    var accentHex: String?          // category color of the current block (set by LiveActivityManager)
 
     /// Next moment the card's content changes. Used as staleDate + background refresh time.
     var nextBoundary: Date? {
@@ -68,7 +69,8 @@ struct DaySnapshot {
             actionBlockID: actionID,
             action: action,
             stepsDone: stepsDone,
-            stepsTotal: stepsTotal
+            stepsTotal: stepsTotal,
+            accentHex: current == nil ? nil : accentHex
         )
     }
 }

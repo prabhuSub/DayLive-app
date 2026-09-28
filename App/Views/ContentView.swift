@@ -2,20 +2,11 @@ import Combine
 import SwiftUI
 import UIKit
 
-/// Tesla-style look: pure black, big type, flat dark cards, round quick controls.
-enum Theme {
-    static let bg = Color.black
-    static let card = Color(white: 0.11)
-    static let text = Color.white
-    static let dim = Color(white: 0.58)
-    static let faint = Color(white: 0.34)
-    static let red = Color(red: 0.89, green: 0.19, blue: 0.18)
-}
-
-struct ContentView: View {
+/// Today tab: big title, info row, Add / Go Live, today's timeline.
+struct TodayView: View {
     @EnvironmentObject private var store: BlockStore
     @EnvironmentObject private var activity: LiveActivityManager
-    @Environment(\.openURL) private var openURL
+    @EnvironmentObject private var categories: CategoryStore
 
     @State private var showingAdd = false
     @State private var editing: Block?
@@ -26,29 +17,49 @@ struct ContentView: View {
 
     var body: some View {
         let snap = activity.snapshot(now: now)
-        let state = snap.contentState()
 
-        ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
-                header(title: state.title)
-                PreviewCard(state: state)
-                controls
-                if !calendarGranted {
-                    calendarBanner
+        VStack(spacing: 0) {
+            HeaderBar(section: "Today")
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    hero(snap: snap)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 22)
+                        .padding(.bottom, 22)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Theme.bg)
+
+                    VStack(alignment: .leading, spacing: 14) {
+                        if !calendarGranted { calendarBanner }
+                        Text("Today")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundStyle(Theme.text)
+                        timeline(snap: snap)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                    .padding(.bottom, 130)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                timeline(snap: snap)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-            .padding(.bottom, 60)
+            .background(Theme.section)
+            // LIVE NOW sits top-right, under the theme button.
+            .overlay(alignment: .topTrailing) {
+                livePill(snap: snap)
+                    .padding(.top, 10)
+                    .padding(.trailing, 16)
+            }
         }
-        .background(Theme.bg.ignoresSafeArea())
         .sheet(isPresented: $showingAdd) {
             QuickAddSheet()
-                .presentationDetents([.medium])
+                .presentationDetents([.large])
         }
         .sheet(item: $editing) { block in
-            BlockEditorSheet(block: block, steps: store.steps(for: block.id)) {
+            BlockEditorSheet(
+                block: block,
+                steps: store.steps(for: block.id),
+                categoryOverride: store.categoryOverrides[block.id]
+            ) {
                 store.delete(id: block.id)
                 Task { await activity.refresh() }
             }
@@ -63,191 +74,148 @@ struct ContentView: View {
         }
     }
 
-    // MARK: Header
+    // MARK: Hero
 
-    private func header(title: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(now.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()).uppercased())
-                .font(.system(size: 13, weight: .semibold))
-                .tracking(1.5)
-                .foregroundStyle(Theme.dim)
-            Text(title)
-                .font(.system(size: 34, weight: .bold))
-                .foregroundStyle(Theme.text)
-                .lineLimit(2)
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(activity.isRunning ? DayLiveStyle.accent : Theme.faint)
-                    .frame(width: 8, height: 8)
-                Text(activity.statusText)
+    private func hero(snap: DaySnapshot) -> some View {
+        let title: String
+        let subtitle: String
+        if let c = snap.current {
+            title = c.title
+            subtitle = "\(c.source == .calendar ? (c.calendarName ?? "Calendar") : "My plan") · until \(c.end.shortTime)"
+        } else if let n = snap.next {
+            title = "Free"
+            subtitle = "Next: \(n.title) at \(n.start.shortTime)"
+        } else {
+            title = snap.all.isEmpty ? "Nothing planned" : "Day complete"
+            subtitle = snap.all.isEmpty ? "Tap Add block to plan your day" : "Nothing else today"
+        }
+
+        return VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 6) {
+                Caps(now.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
+                Text(title)
+                    .font(.system(size: 36, weight: .bold))
+                    .foregroundStyle(Theme.text)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.7)
+                Text(subtitle)
                     .font(.system(size: 15))
-                    .foregroundStyle(Theme.dim)
+                    .foregroundStyle(Theme.muted)
             }
-        }
-        .padding(.top, 8)
-    }
+            .padding(.trailing, 120)   // room for the LIVE NOW pill
 
-    // MARK: Quick controls
+            InfoRow(items: todayNumbers(snap))
 
-    private var controls: some View {
-        HStack(spacing: 0) {
-            ControlButton(
-                symbol: activity.isRunning ? "stop.fill" : "bolt.fill",
-                label: activity.isRunning ? "Stop Live" : "Go Live",
-                active: activity.isRunning
-            ) {
-                Task {
-                    if activity.isRunning { await activity.stop() } else { await activity.start() }
-                }
-            }
-            ControlButton(symbol: "plus", label: "Add") { showingAdd = true }
-            ControlButton(symbol: "arrow.clockwise", label: "Refresh") {
-                Task { await activity.refresh() }
-            }
-            ControlButton(symbol: "gearshape", label: "Settings") {
-                if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
-            }
-        }
-    }
-
-    private var calendarBanner: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Calendar access is off")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(Theme.text)
-            Text("Turn it on so your Tesla and personal events show up in your day.")
-                .font(.system(size: 15))
-                .foregroundStyle(Theme.dim)
-            Button("Allow access") {
-                Task {
-                    calendarGranted = await CalendarService.shared.requestAccess()
-                    if !calendarGranted, let url = URL(string: UIApplication.openSettingsURLString) {
-                        openURL(url)
+            HStack(spacing: 10) {
+                Button("Add block") { showingAdd = true }
+                    .buttonStyle(PrimaryButtonStyle())
+                Button(activity.isRunning ? "Stop Live" : "Go Live") {
+                    Task {
+                        if activity.isRunning { await activity.stop() } else { await activity.start() }
                     }
-                    await activity.refresh()
+                }
+                .buttonStyle(SecondaryButtonStyle())
+            }
+
+            if !activity.isRunning || activity.lastError != nil {
+                Text(activity.statusText)
+                    .font(.system(size: 12))
+                    .foregroundStyle(activity.lastError == nil ? Theme.muted : Theme.red)
+            }
+        }
+    }
+
+    /// FOCUSED (Work + Deep Work so far) · STEPS · MEETINGS LEFT
+    private func todayNumbers(_ snap: DaySnapshot) -> [InfoItem] {
+        var focused: TimeInterval = 0
+        var stepsDone = 0, stepsTotal = 0, meetingsLeft = 0
+        for b in snap.all {
+            let cat = categories.category(for: b).id
+            if cat == "work" || cat == "deepwork" {
+                focused += max(0, min(b.end, now).timeIntervalSince(b.start))
+            }
+            if cat == "meetings" && b.end > now { meetingsLeft += 1 }
+            let st = store.steps(for: b.id)
+            stepsDone += st.filter(\.done).count
+            stepsTotal += st.count
+        }
+        return [
+            InfoItem(label: "Focused", value: focused.hoursMinutes),
+            InfoItem(label: "Steps", value: stepsTotal == 0 ? "—" : "\(stepsDone) / \(stepsTotal)"),
+            InfoItem(label: "Meetings left", value: "\(meetingsLeft)"),
+        ]
+    }
+
+    // MARK: LIVE NOW pill
+
+    @ViewBuilder
+    private func livePill(snap: DaySnapshot) -> some View {
+        if activity.isRunning, let c = snap.current {
+            let color = categories.category(for: c).color
+            HStack(spacing: 8) {
+                ZStack {
+                    Circle().fill(color).frame(width: 20, height: 20)
+                    Circle().fill(Color.white).frame(width: 7, height: 7)
+                }
+                VStack(alignment: .leading, spacing: 0) {
+                    Caps("Live now", color: color)
+                    Text("\(c.end.timeIntervalSince(now).hoursMinutes) left")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.text)
                 }
             }
-            .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(Theme.text)
+            .padding(.vertical, 7)
+            .padding(.leading, 8)
+            .padding(.trailing, 12)
+            .background(RoundedRectangle(cornerRadius: 10).fill(Theme.card))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 1))
+            .shadow(color: .black.opacity(0.08), radius: 8, y: 3)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(18)
-        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Theme.card))
     }
 
     // MARK: Timeline
 
     private func timeline(snap: DaySnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("TODAY")
-                .font(.system(size: 13, weight: .semibold))
-                .tracking(1.5)
-                .foregroundStyle(Theme.dim)
-                .padding(.bottom, 4)
-
+        VStack(spacing: 0) {
             if snap.all.isEmpty {
-                Text("Nothing planned. Tap Add to plan a block, then tap it to add steps.")
-                    .font(.system(size: 15))
-                    .foregroundStyle(Theme.dim)
-                    .padding(.vertical, 14)
+                Text("Nothing planned. Tap Add block, or load sample data in Settings.")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Theme.muted)
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-
-            ForEach(snap.all) { block in
+            ForEach(Array(snap.all.enumerated()), id: \.element.id) { index, block in
+                if index > 0 { Rectangle().fill(Theme.border).frame(height: 1) }
                 Button {
                     editing = block
                 } label: {
-                    TimelineRow(block: block, now: now, steps: store.steps(for: block.id))
-                        .contentShape(Rectangle())
+                    BlockRow(block: block, now: now,
+                             color: categories.category(for: block).color,
+                             steps: store.steps(for: block.id))
                 }
                 .buttonStyle(.plain)
-                    .contextMenu {
-                        Button("Edit", systemImage: "pencil") { editing = block }
-                        if block.source == .plan {
-                            Button("Delete", role: .destructive) {
-                                store.delete(id: block.id)
-                                Task { await activity.refresh() }
-                            }
-                        }
+            }
+        }
+        .cardBox(padding: 0)
+    }
+
+    private var calendarBanner: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Caps("Calendar access is off")
+            Text("Turn it on so your Tesla and personal events show up.")
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.muted)
+            Button("Allow access") {
+                Task {
+                    calendarGranted = await CalendarService.shared.requestAccess()
+                    if !calendarGranted, let url = URL(string: UIApplication.openSettingsURLString) {
+                        await UIApplication.shared.open(url)
                     }
-                Rectangle().fill(Theme.card).frame(height: 1)
+                    await activity.refresh()
+                }
             }
+            .buttonStyle(SecondaryButtonStyle())
         }
-    }
-}
-
-// MARK: - Pieces
-
-private struct ControlButton: View {
-    let symbol: String
-    let label: String
-    var active: Bool = false
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 8) {
-                Image(systemName: symbol)
-                    .font(.system(size: 20, weight: .medium))
-                    .frame(width: 58, height: 58)
-                    .background(Circle().fill(active ? Theme.text : Theme.card))
-                    .foregroundStyle(active ? Color.black : Theme.text)
-                Text(label)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Theme.dim)
-            }
-            .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
-    }
-}
-
-/// The Lock Screen card, drawn on a flat dark card so it can be checked without locking the phone.
-private struct PreviewCard: View {
-    let state: DayActivityAttributes.ContentState
-
-    var body: some View {
-        LockScreenCard(state: state)
-            .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Theme.card))
-    }
-}
-
-private struct TimelineRow: View {
-    let block: Block
-    let now: Date
-    var steps: [Step] = []
-
-    private var detail: String {
-        var parts = ["\(block.start.shortTime) – \(block.end.shortTime)", block.source == .calendar ? "Calendar" : "My plan"]
-        if !steps.isEmpty { parts.append("\(steps.filter(\.done).count)/\(steps.count) steps") }
-        return parts.joined(separator: " · ")
-    }
-
-    var body: some View {
-        let isNow = block.contains(now)
-        let done = block.end <= now
-
-        HStack(alignment: .firstTextBaseline, spacing: 16) {
-            Text(block.start.shortTime)
-                .font(.system(size: 15, weight: .medium).monospacedDigit())
-                .foregroundStyle(isNow ? Theme.text : Theme.dim)
-                .frame(width: 76, alignment: .leading)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(block.title)
-                    .font(.system(size: 17, weight: isNow ? .semibold : .regular))
-                    .foregroundStyle(done ? Theme.faint : Theme.text)
-                Text(detail)
-                    .font(.system(size: 13))
-                    .foregroundStyle(Theme.faint)
-            }
-            Spacer(minLength: 8)
-            if isNow {
-                Text("NOW")
-                    .font(.system(size: 11, weight: .bold))
-                    .tracking(1)
-                    .foregroundStyle(Theme.red)
-            }
-        }
-        .padding(.vertical, 14)
+        .cardBox()
     }
 }

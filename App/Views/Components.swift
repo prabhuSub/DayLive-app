@@ -1,0 +1,404 @@
+import SwiftUI
+import UIKit
+
+// MARK: - Theme (from prabhusubramanian.com, light + dark)
+
+extension UIColor {
+    convenience init(rgb: UInt32) {
+        self.init(red: CGFloat((rgb >> 16) & 0xFF) / 255,
+                  green: CGFloat((rgb >> 8) & 0xFF) / 255,
+                  blue: CGFloat(rgb & 0xFF) / 255,
+                  alpha: 1)
+    }
+}
+
+enum Theme {
+    private static func dyn(_ light: UInt32, _ dark: UInt32) -> Color {
+        Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: dark) : UIColor(rgb: light) })
+    }
+
+    static let bg = dyn(0xFFFFFF, 0x111112)
+    static let section = dyn(0xF4F4F4, 0x18181A)
+    static let card = dyn(0xFFFFFF, 0x1E1E20)
+    static let border = dyn(0xE0E0E0, 0x2E2E31)
+    static let text = dyn(0x171A20, 0xF4F4F4)
+    static let muted = dyn(0x5C5E62, 0xA2A3A5)
+    static let faint = dyn(0xA2A3A5, 0x5C5E62)
+    static let navActive = dyn(0xEEEEEE, 0x2A2A2D)
+    static let blue = Color(UIColor(rgb: 0x3E6AE1))
+    static let red = Color(UIColor(rgb: 0xE31937))
+}
+
+enum Appearance: String, CaseIterable, Hashable {
+    case system, light, dark
+
+    var label: String { rawValue.capitalized }
+
+    var scheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+}
+
+// MARK: - Header: HYPERDAY | Section              [theme]
+
+struct HeaderBar: View {
+    let section: String
+    @AppStorage("appearance") private var appearance = Appearance.system.rawValue
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text("HYPERDAY")
+                .font(.system(size: 14, weight: .heavy))
+                .kerning(5)
+                .foregroundStyle(Theme.text)
+            Rectangle().fill(Theme.border).frame(width: 1, height: 16)
+            Text(section)
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.muted)
+            Spacer()
+            Button {
+                appearance = (scheme == .dark ? Appearance.light : Appearance.dark).rawValue
+            } label: {
+                Image(systemName: scheme == .dark ? "sun.max" : "moon")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Theme.text)
+                    .frame(width: 32, height: 32)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(scheme == .dark ? "Switch to light mode" : "Switch to dark mode")
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(Theme.bg)
+        .overlay(alignment: .bottom) { Rectangle().fill(Theme.border).frame(height: 1) }
+    }
+}
+
+// MARK: - Text pieces
+
+/// Tiny uppercase letter-spaced label (LOCATION / CURRENT ROLE on the site).
+struct Caps: View {
+    let text: String
+    var color: Color = Theme.muted
+    init(_ text: String, color: Color = Theme.muted) { self.text = text; self.color = color }
+
+    var body: some View {
+        Text(text.uppercased())
+            .font(.system(size: 10, weight: .bold))
+            .kerning(1.4)
+            .foregroundStyle(color)
+    }
+}
+
+struct InfoItem: Identifiable {
+    let id = UUID()
+    let label: String
+    let value: String
+}
+
+/// Row of label/value pairs over thin dividers (the site's About panel).
+struct InfoRow: View {
+    let items: [InfoItem]
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            ForEach(items) { item in
+                VStack(alignment: .leading, spacing: 4) {
+                    Rectangle().fill(Theme.border).frame(height: 1).padding(.bottom, 6)
+                    Caps(item.label)
+                    Text(item.value)
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(Theme.text)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+}
+
+// MARK: - Buttons (Hire Me / Download CV)
+
+struct PrimaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(Color.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 40)
+            .background(RoundedRectangle(cornerRadius: 4).fill(Theme.blue))
+            .opacity(configuration.isPressed ? 0.8 : 1)
+    }
+}
+
+struct SecondaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(Theme.text)
+            .frame(maxWidth: .infinity)
+            .frame(height: 40)
+            .background(RoundedRectangle(cornerRadius: 4).fill(Theme.card))
+            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.border, lineWidth: 1))
+            .opacity(configuration.isPressed ? 0.7 : 1)
+    }
+}
+
+// MARK: - Card
+
+struct CardBox: ViewModifier {
+    var padding: CGFloat = 16
+
+    func body(content: Content) -> some View {
+        content
+            .padding(padding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 6).fill(Theme.card))
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.border, lineWidth: 1))
+    }
+}
+
+extension View {
+    func cardBox(padding: CGFloat = 16) -> some View { modifier(CardBox(padding: padding)) }
+}
+
+// MARK: - Chips (the site's skill pills)
+
+struct Chip: View {
+    let title: String
+    var color: Color? = nil
+    var selected: Bool = false
+    var action: () -> Void = {}
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                if let color {
+                    Circle().fill(color).frame(width: 8, height: 8)
+                }
+                Text(title)
+                    .font(.system(size: 13, weight: selected ? .semibold : .regular))
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .foregroundStyle(Theme.text)
+            .background(RoundedRectangle(cornerRadius: 4).fill(Theme.card))
+            .overlay(RoundedRectangle(cornerRadius: 4).stroke(selected ? Theme.text : Theme.border, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// Wraps chips onto new lines.
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0, widest: CGFloat = 0
+        for view in subviews {
+            let size = view.sizeThatFits(.unspecified)
+            if x > 0 && x + size.width > maxWidth {
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+            widest = max(widest, x - spacing)
+        }
+        return CGSize(width: proposal.width ?? widest, height: y + rowHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX, y = bounds.minY, rowHeight: CGFloat = 0
+        for view in subviews {
+            let size = view.sizeThatFits(.unspecified)
+            if x > bounds.minX && x + size.width > bounds.maxX {
+                x = bounds.minX
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            view.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+    }
+}
+
+/// "Auto · Deep Work" + every category. nil selection = automatic (rules).
+struct CategoryChips: View {
+    @Binding var selection: String?
+    let autoName: String
+    @ObservedObject private var store = CategoryStore.shared
+
+    var body: some View {
+        FlowLayout(spacing: 8) {
+            Chip(title: "Auto · \(autoName)", selected: selection == nil) { selection = nil }
+            ForEach(store.categories) { c in
+                Chip(title: c.name, color: c.color, selected: selection == c.id) { selection = c.id }
+            }
+        }
+    }
+}
+
+// MARK: - Pill toggle (the site's nav: active item gets a gray fill)
+
+struct PillNav<T: Hashable>: View {
+    let options: [T]
+    @Binding var selection: T
+    let label: (T) -> String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(options, id: \.self) { option in
+                let on = option == selection
+                Button {
+                    withAnimation(.easeOut(duration: 0.15)) { selection = option }
+                } label: {
+                    Text(label(option))
+                        .font(.system(size: 13, weight: on ? .semibold : .regular))
+                        .foregroundStyle(on ? Theme.text : Theme.muted)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(on ? Theme.navActive : Color.clear))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
+// MARK: - Block row (timeline, calendar)
+
+struct BlockRow: View {
+    let block: Block
+    let now: Date
+    let color: Color
+    var steps: [Step] = []
+    var showNow = true
+
+    private var detail: String {
+        var parts: [String] = []
+        parts.append(block.source == .calendar ? (block.calendarName ?? "Calendar") : "My plan")
+        parts.append(block.end.timeIntervalSince(block.start).hoursMinutes)
+        if !steps.isEmpty { parts.append("\(steps.filter(\.done).count)/\(steps.count) steps") }
+        if block.declined { parts.append("Declined") }
+        return parts.joined(separator: " · ")
+    }
+
+    var body: some View {
+        let isNow = showNow && block.contains(now)
+        let done = block.end <= now
+
+        HStack(spacing: 12) {
+            Text(block.start.shortTime)
+                .font(.system(size: 13, weight: .medium).monospacedDigit())
+                .foregroundStyle(isNow ? Theme.text : Theme.muted)
+                .frame(width: 66, alignment: .leading)
+            RoundedRectangle(cornerRadius: 2)
+                .fill(color)
+                .opacity(done ? 0.35 : 1)
+                .frame(width: 3, height: 32)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(block.title)
+                    .font(.system(size: 15, weight: isNow ? .semibold : .regular))
+                    .foregroundStyle(done ? Theme.faint : Theme.text)
+                    .strikethrough(block.declined)
+                    .lineLimit(1)
+                Text(detail)
+                    .font(.system(size: 12))
+                    .foregroundStyle(done ? Theme.faint : Theme.muted)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 6)
+            if isNow {
+                Text("NOW")
+                    .font(.system(size: 10, weight: .bold))
+                    .kerning(1.2)
+                    .foregroundStyle(Theme.red)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Floating tab bubble
+
+enum AppTab: String, CaseIterable, Identifiable {
+    case today, calendar, stats, settings
+    var id: String { rawValue }
+    var title: String { rawValue.capitalized }
+    var icon: String {
+        switch self {
+        case .today: return "list.bullet"
+        case .calendar: return "calendar"
+        case .stats: return "chart.bar"
+        case .settings: return "gearshape"
+        }
+    }
+}
+
+struct FloatingTabBar: View {
+    @Binding var selection: AppTab
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(AppTab.allCases) { tab in
+                let on = tab == selection
+                Button {
+                    selection = tab
+                } label: {
+                    VStack(spacing: 2) {
+                        Image(systemName: tab.icon).font(.system(size: 17, weight: .medium))
+                        Text(tab.title).font(.system(size: 10, weight: .semibold))
+                    }
+                    .foregroundStyle(on ? Theme.text : Theme.faint)
+                    .frame(width: 74, height: 46)
+                    .background(Capsule().fill(on ? Theme.navActive : Color.clear))
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(tab.title)
+            }
+        }
+        .padding(5)
+        .background(Capsule().fill(Theme.card))
+        .overlay(Capsule().stroke(Theme.border, lineWidth: 1))
+        .shadow(color: .black.opacity(0.15), radius: 12, y: 6)
+    }
+}
+
+struct RootView: View {
+    @State private var tab: AppTab = .today
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Group {
+                switch tab {
+                case .today: TodayView()
+                case .calendar: CalendarTabView()
+                case .stats: StatsView()
+                case .settings: SettingsView()
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            FloatingTabBar(selection: $tab)
+                .padding(.bottom, 6)
+        }
+        .background(Theme.bg.ignoresSafeArea())
+        .ignoresSafeArea(.keyboard)
+    }
+}

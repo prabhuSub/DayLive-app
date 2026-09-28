@@ -8,6 +8,7 @@ struct QuickAddSheet: View {
     @State private var title = ""
     @State private var start = QuickAddSheet.nextFiveMinutes()
     @State private var minutes = 60
+    @State private var categoryID: String?
 
     private let lengths = [15, 30, 60, 90, 120]
 
@@ -31,7 +32,19 @@ struct QuickAddSheet: View {
 
                 Text("Ends at \(start.addingTimeInterval(TimeInterval(minutes * 60)).shortTime)")
                     .foregroundStyle(.secondary)
+
+                Section {
+                    CategoryChips(
+                        selection: $categoryID,
+                        autoName: CategoryStore.shared.ruleCategory(title: title, calendarName: nil).name
+                    )
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("Category")
+                }
             }
+            .scrollContentBackground(.hidden)
+            .background(Theme.section)
             .navigationTitle("Add block")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -47,7 +60,7 @@ struct QuickAddSheet: View {
 
     private func add() {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-        BlockStore.shared.add(title: title, start: start, minutes: minutes)
+        BlockStore.shared.add(title: title, start: start, minutes: minutes, categoryID: categoryID)
         Task { await LiveActivityManager.shared.refresh() }
         dismiss()
     }
@@ -72,16 +85,18 @@ struct BlockEditorSheet: View {
     @State private var start: Date
     @State private var minutes: Int
     @State private var steps: [Step]
+    @State private var categoryID: String?
     @State private var newStep = ""
     @FocusState private var newStepFocused: Bool
 
-    init(block: Block, steps: [Step], onDelete: @escaping () -> Void = {}) {
+    init(block: Block, steps: [Step], categoryOverride: String? = nil, onDelete: @escaping () -> Void = {}) {
         self.block = block
         self.onDelete = onDelete
         _title = State(initialValue: block.title)
         _start = State(initialValue: block.start)
         _minutes = State(initialValue: max(5, Int((block.duration / 60).rounded())))
         _steps = State(initialValue: steps)
+        _categoryID = State(initialValue: categoryOverride)
     }
 
     private var isPlan: Bool { block.source == .plan }
@@ -107,6 +122,16 @@ struct BlockEditorSheet: View {
                     } footer: {
                         Text("From your calendar. Change the time in the Calendar app; steps are saved in Hyperday.")
                     }
+                }
+
+                Section {
+                    CategoryChips(
+                        selection: $categoryID,
+                        autoName: CategoryStore.shared.ruleCategory(title: block.title, calendarName: block.calendarName).name
+                    )
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("Category")
                 }
 
                 Section {
@@ -151,6 +176,8 @@ struct BlockEditorSheet: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Theme.section)
             .navigationTitle(isPlan ? "Edit block" : "Steps")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -184,6 +211,7 @@ struct BlockEditorSheet: View {
             store.update(id: block.id, title: title, start: start, minutes: minutes)
         }
         store.setSteps(steps, for: block.id)
+        store.setCategory(categoryID, for: block.id)
         Task { await LiveActivityManager.shared.refresh() }
         dismiss()
     }

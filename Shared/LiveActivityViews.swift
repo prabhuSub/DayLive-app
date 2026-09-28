@@ -10,6 +10,26 @@ enum DayLiveStyle {
     static let planGreen = Color(red: 36 / 255, green: 138 / 255, blue: 61 / 255)
 }
 
+extension Color {
+    /// "#30D158" -> Color
+    init(hex: String) {
+        var s = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        if s.hasPrefix("#") { s.removeFirst() }
+        var v: UInt64 = 0
+        Scanner(string: s).scanHexInt64(&v)
+        self.init(.sRGB,
+                  red: Double((v >> 16) & 0xFF) / 255,
+                  green: Double((v >> 8) & 0xFF) / 255,
+                  blue: Double(v & 0xFF) / 255,
+                  opacity: 1)
+    }
+}
+
+extension DayActivityAttributes.ContentState {
+    /// Category color of the live block (bar + icon); green when nothing is live.
+    var accentColor: Color { accentHex.map { Color(hex: $0) } ?? DayLiveStyle.accent }
+}
+
 // MARK: - Lock Screen card
 
 struct LockScreenCard: View {
@@ -21,11 +41,11 @@ struct LockScreenCard: View {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(isStale ? "Out of date · tap to refresh" : state.label)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.78))
                         .lineLimit(1)
                     Text(state.title)
-                        .font(.system(size: 21, weight: .bold))
+                        .font(.system(size: 23, weight: .bold))
                         .lineLimit(1)
                     if let also = state.also {
                         Text(also)
@@ -35,16 +55,17 @@ struct LockScreenCard: View {
                     }
                 }
                 Spacer(minLength: 0)
-                SourceIcon(source: state.source, size: 40)
+                SourceIcon(source: state.source, size: 44, tint: state.source == .free ? nil : state.accentColor)
             }
             HStack(spacing: 12) {
-                SegmentBar(segments: state.segments)
+                SegmentBar(segments: state.segments, accent: state.accentColor, height: 6)
                 BlockActionButton(state: state)
             }
             .padding(.top, 8)
         }
         .foregroundStyle(.white)
-        .padding(.horizontal, 16)
+        .padding(.leading, 16)
+        .padding(.trailing, 14)
         .padding(.vertical, 14)
     }
 }
@@ -54,10 +75,11 @@ struct LockScreenCard: View {
 struct SourceIcon: View {
     let source: BlockSource
     var size: CGFloat = 40
+    var tint: Color? = nil   // category color; overrides the source color
 
     var body: some View {
         RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
-            .fill(background)
+            .fill(tint ?? background)
             .frame(width: size, height: size)
             .overlay(
                 Image(systemName: symbol)
@@ -94,6 +116,8 @@ struct SourceIcon: View {
 
 struct SegmentBar: View {
     let segments: [Double]
+    var accent: Color = DayLiveStyle.accent
+    var height: CGFloat = 5
 
     var body: some View {
         HStack(spacing: 5) {
@@ -103,11 +127,11 @@ struct SegmentBar: View {
                     .overlay(alignment: .leading) {
                         GeometryReader { geo in
                             Capsule()
-                                .fill(DayLiveStyle.accent)
+                                .fill(accent)
                                 .frame(width: geo.size.width * min(max(value, 0), 1))
                         }
                     }
-                    .frame(height: 5)
+                    .frame(height: height)
             }
         }
         .frame(maxWidth: .infinity)
@@ -116,13 +140,14 @@ struct SegmentBar: View {
 
 struct DayRing: View {
     let progress: Double
+    var accent: Color = DayLiveStyle.accent
 
     var body: some View {
         ZStack {
             Circle().stroke(.white.opacity(0.22), lineWidth: 3)
             Circle()
                 .trim(from: 0, to: min(max(progress, 0), 1))
-                .stroke(DayLiveStyle.accent, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                .stroke(accent, style: StrokeStyle(lineWidth: 3, lineCap: .round))
                 .rotationEffect(.degrees(-90))
         }
         .padding(1.5)
@@ -132,13 +157,14 @@ struct DayRing: View {
 
 struct TimeLeft: View {
     let end: Date?
+    var accent: Color = DayLiveStyle.accent
 
     var body: some View {
         if let end, end > Date.now {
             Text(timerInterval: Date.now...end, countsDown: true)
                 .monospacedDigit()
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(DayLiveStyle.accent)
+                .foregroundStyle(accent)
                 .multilineTextAlignment(.trailing)
                 .frame(width: 60)
         }

@@ -19,11 +19,12 @@ struct DayLiveActivityWidget: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    SourceIcon(source: context.state.source, size: 34)
+                    SourceIcon(source: context.state.source, size: 34,
+                               tint: context.state.source == .free ? nil : context.state.accentColor)
                         .padding(.leading, 4)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    TimeLeft(end: context.state.currentEnd)
+                    TimeLeft(end: context.state.currentEnd, accent: context.state.accentColor)
                         .padding(.trailing, 4)
                 }
                 DynamicIslandExpandedRegion(.center) {
@@ -42,21 +43,22 @@ struct DayLiveActivityWidget: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack(spacing: 12) {
-                        SegmentBar(segments: context.state.segments)
+                        SegmentBar(segments: context.state.segments, accent: context.state.accentColor)
                         BlockActionButton(state: context.state)
                     }
                     .padding(.horizontal, 4)
                 }
             } compactLeading: {
-                SourceIcon(source: context.state.source, size: 22)
+                SourceIcon(source: context.state.source, size: 22,
+                           tint: context.state.source == .free ? nil : context.state.accentColor)
             } compactTrailing: {
-                DayRing(progress: context.state.dayProgress)
+                DayRing(progress: context.state.dayProgress, accent: context.state.accentColor)
                     .frame(width: 20, height: 20)
             } minimal: {
-                DayRing(progress: context.state.dayProgress)
+                DayRing(progress: context.state.dayProgress, accent: context.state.accentColor)
                     .frame(width: 20, height: 20)
             }
-            .keylineTint(DayLiveStyle.accent)
+            .keylineTint(context.state.accentColor)
         }
     }
 }

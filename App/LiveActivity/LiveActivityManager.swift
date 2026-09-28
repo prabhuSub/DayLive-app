@@ -50,14 +50,20 @@ final class LiveActivityManager: ObservableObject {
 
     var activitiesEnabled: Bool { ActivityAuthorizationInfo().areActivitiesEnabled }
 
+    /// Today's raw blocks: your planned blocks + calendar events (before overrides).
+    func todayBlocks(now: Date = .now) -> [Block] {
+        BlockStore.shared.planBlocks(on: now) + CalendarService.shared.events(on: now)
+    }
+
     func snapshot(now: Date = .now) -> DaySnapshot {
-        let blocks = BlockStore.shared.planBlocks(on: now) + CalendarService.shared.events(on: now)
-        return DayEngine.snapshot(
-            of: blocks,
+        var snap = DayEngine.snapshot(
+            of: todayBlocks(now: now),
             overrides: BlockStore.shared.overrides,
             steps: BlockStore.shared.steps,
             now: now
         )
+        snap.accentHex = snap.current.map { CategoryStore.shared.category(for: $0).colorHex }
+        return snap
     }
 
     /// Recompute the day and push it to the Live Activity. Safe to call often.
@@ -101,6 +107,7 @@ final class LiveActivityManager: ObservableObject {
         }
 
         isRunning = !Self.liveActivities().isEmpty
+        HistoryStore.shared.recordToday(raw: todayBlocks(now: now), now: now)
         BackgroundRefresh.schedule(at: snap.nextBoundary)
     }
 

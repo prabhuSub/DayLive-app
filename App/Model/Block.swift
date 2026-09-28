@@ -7,6 +7,8 @@ struct Block: Identifiable, Codable, Hashable {
     var start: Date
     var end: Date
     var source: BlockSource
+    var calendarName: String? = nil   // e.g. "Tesla" (calendar events only; used by category rules)
+    var declined: Bool = false        // you declined this calendar invite
 
     var duration: TimeInterval { end.timeIntervalSince(start) }
 
@@ -28,4 +30,14 @@ struct BlockOverride: Codable, Hashable {
 
 extension Date {
     var shortTime: String { formatted(date: .omitted, time: .shortened) }
+}
+
+extension TimeInterval {
+    /// 5400 -> "1h 30m"
+    var hoursMinutes: String {
+        let m = max(0, Int((self / 60).rounded()))
+        let h = m / 60, r = m % 60
+        if h == 0 { return "\(r)m" }
+        return r == 0 ? "\(h)h" : "\(h)h \(r)m"
+    }
 }
