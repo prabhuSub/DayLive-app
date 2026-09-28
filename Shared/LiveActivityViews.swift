@@ -1,5 +1,6 @@
 import AppIntents
 import SwiftUI
+import WidgetKit
 
 /// Shared by the widget extension (real Live Activity) and the app (preview card).
 enum DayLiveStyle {

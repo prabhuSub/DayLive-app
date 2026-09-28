@@ -251,7 +251,8 @@ struct WeeklyRecapView: View {
     @State private var saved = false
     let recap: WeeklyRecap
 
-    init(recap: WeeklyRecap = HistoryStore.shared.weeklyRecap()) { self.recap = recap }
+    @MainActor
+    init(recap: WeeklyRecap? = nil) { self.recap = recap ?? HistoryStore.shared.weeklyRecap() }
 
     private var image: UIImage? {
         let r = ImageRenderer(content: RecapCard(recap: recap).frame(width: 350, height: 540).padding(20)
