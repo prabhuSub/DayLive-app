@@ -1,7 +1,7 @@
 import AppIntents
 import Foundation
 
-/// "Hey Siri, add a block in DayLive" -> Siri asks what + how long.
+/// "Hey Siri, add a block in Hyperday" -> Siri asks what + how long.
 /// Also usable from Shortcuts and the Action Button.
 /// LiveActivityIntent (not plain AppIntent) so it may start the Live Activity from the background.
 struct AddBlockIntent: LiveActivityIntent {

@@ -4,7 +4,7 @@ import Foundation
 /// Where a block came from. Drives the source icon on the card.
 enum BlockSource: String, Codable, Hashable {
     case calendar   // iOS Calendar (incl. the Tesla calendar)
-    case plan       // added in DayLive
+    case plan       // added in Hyperday
     case free       // gap between blocks
 }
 

@@ -24,11 +24,11 @@ targets:
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: DayLive
+        CFBundleDisplayName: Hyperday
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         NSSupportsLiveActivities: true
-        NSCalendarsFullAccessUsageDescription: "DayLive reads today's calendar events so they show up in your day timeline."
+        NSCalendarsFullAccessUsageDescription: "Hyperday reads today's calendar events so they show up in your day timeline."
         UIBackgroundModes: [fetch]
         BGTaskSchedulerPermittedIdentifiers: [com.prabhu.daylive.refresh]
     settings:
@@ -49,7 +49,7 @@ targets:
     info:
       path: Widget/Info.plist
       properties:
-        CFBundleDisplayName: DayLive
+        CFBundleDisplayName: Hyperday
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:

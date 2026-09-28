@@ -20,7 +20,7 @@ struct DaySnapshot {
 
     func contentState() -> DayActivityAttributes.ContentState {
         let label = next.map { "Next · \($0.title) at \($0.start.shortTime)" }
-            ?? (all.isEmpty ? "Add a block in DayLive" : "Nothing else today")
+            ?? (all.isEmpty ? "Add a block in Hyperday" : "Nothing else today")
 
         var title = all.isEmpty ? "Nothing planned" : "Day complete"
         var source = BlockSource.free

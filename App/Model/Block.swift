@@ -1,6 +1,6 @@
 import Foundation
 
-/// One block of the day: a calendar event or something you planned in DayLive.
+/// One block of the day: a calendar event or something you planned in Hyperday.
 struct Block: Identifiable, Codable, Hashable {
     var id: String
     var title: String

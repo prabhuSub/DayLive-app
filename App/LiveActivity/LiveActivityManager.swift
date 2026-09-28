@@ -4,7 +4,7 @@ import BackgroundTasks
 import Foundation
 import UIKit
 
-/// Starts, updates and restarts the one DayLive Live Activity.
+/// Starts, updates and restarts the one Hyperday Live Activity.
 @MainActor
 final class LiveActivityManager: ObservableObject {
     static let shared = LiveActivityManager()
@@ -120,7 +120,7 @@ final class LiveActivityManager: ObservableObject {
 
     private func request(_ content: ActivityContent<DayActivityAttributes.ContentState>) {
         guard activitiesEnabled else {
-            lastError = "Live Activities are off. Turn them on in Settings › DayLive."
+            lastError = "Live Activities are off. Turn them on in Settings › Hyperday."
             return
         }
         do {

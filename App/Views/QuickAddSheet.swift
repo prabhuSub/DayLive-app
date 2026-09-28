@@ -105,7 +105,7 @@ struct BlockEditorSheet: View {
                         Text("\(block.start.shortTime) – \(block.end.shortTime)")
                             .foregroundStyle(.secondary)
                     } footer: {
-                        Text("From your calendar. Change the time in the Calendar app; steps are saved in DayLive.")
+                        Text("From your calendar. Change the time in the Calendar app; steps are saved in Hyperday.")
                     }
                 }
 
