@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **Widgets:** Home Screen small / medium / large, Lock Screen circular ring, and StandBy (small).
+- **Apple Watch:** a Smart Stack card for the Live Activity with the time left, next, the bar and the Step / Done button.
+- **Siri & Shortcuts:** "What's next", "Start my day", "I'm done" and "Start Deep Work" (90 min).
+- **Focus filter:** show everything, only work, only personal, or nothing while a Focus is on.
+- **Week view drag:** long-press to move a planned block (15-minute snap, across days), pull the bottom handle to resize.
+- **Weekly recap:** a Sunday 7 PM notification that opens a full-screen card you can share or save to Photos.
+
+### Changed
+- Minimum iOS is now **18**.
+- `deploy.sh` signs with an App Group and falls back without it on a free Apple ID.
+
 ## 0.1.0 — 2026-09-28 (pre-release)
 
 ### Added

@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/iOS-17%2B-black?logo=apple" alt="iOS 17+">
+  <img src="https://img.shields.io/badge/iOS-18%2B-black?logo=apple" alt="iOS 18+">
   <img src="https://img.shields.io/badge/status-early%20preview-E31937" alt="Status: early preview">
   <img src="https://img.shields.io/badge/tracking-none-3E6AE1" alt="No tracking">
   <img src="https://img.shields.io/badge/works-offline-30D158" alt="Works offline">
@@ -76,7 +76,7 @@ All your calendars in one place (work, personal, family) together with your own 
 
 A classic time grid for the whole week. Overlapping meetings sit side by side, and the red line shows the current time.
 
-**How to use it:** tap any block to see it or add steps.
+**How to use it:** tap any block to see it or add steps. **Long-press and drag** a block you planned to move it (it snaps to 15 minutes, even to another day), or pull the small bar on its bottom edge to change its length. Calendar events stay put.
 
 <br clear="right">
 
@@ -89,7 +89,7 @@ See where your time actually goes.
 - **Hours by category:** how much went to work, meetings, fitness and family.
 - **Meeting load:** meetings compared with time you planned yourself.
 
-**How to use it:** switch between **Week, Month and Year**. New to Hyperday? Go to **Settings › Load sample data** to see it filled in.
+**How to use it:** switch between **Week, Month and Year**. Every **Sunday at 7 PM** you get a weekly recap you can share or save as an image; tap **See weekly recap** to open it any time. New to Hyperday? Go to **Settings › Load sample data** to see it filled in.
 
 <br clear="right">
 
@@ -119,7 +119,10 @@ Break any block into small steps. While that block is live, each step is one seg
 
 ## Also works with
 
-- **Siri & Shortcuts:** say "Hey Siri, add a block in Hyperday".
+- **Widgets:** small, medium and large on the Home Screen, a ring on the Lock Screen, and the small one in StandBy.
+- **Apple Watch:** while a block is live, it shows up in the Smart Stack with the time left and a Step / Done button. No separate Watch app needed.
+- **Siri & Shortcuts:** "What's next in Hyperday", "Start my day in Hyperday", "I'm done in Hyperday", "Add a block in Hyperday" and **Start Deep Work**.
+- **Focus:** add a Hyperday filter to a Focus (Settings › Focus › Work › Add Filter) to see only work, only personal, or nothing.
 - **Dynamic Island:** your countdown and progress while you use other apps.
 
 ## Privacy
@@ -140,12 +143,8 @@ Developers can build it themselves: see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.m
 
 ## Coming soon
 
-- Home Screen and StandBy widgets
-- Apple Watch
-- More Siri commands ("What's next?", "Check my step")
-- Drag to move blocks in Week view
-- A weekly recap card to share
-- Focus mode support
+- On-time switching at the exact start of each block
+- iCloud sync between your devices
 
 ## FAQ
 
@@ -155,7 +154,7 @@ Developers can build it themselves: see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.m
 
 **Why does the card sometimes lag behind the clock?** iOS decides when apps can refresh in the background. Opening Hyperday or tapping the card's button updates it right away. On-time switching is on the roadmap.
 
-**Which iPhones?** iPhone with iOS 17 or later. The Dynamic Island needs iPhone 14 Pro or newer.
+**Which iPhones?** iPhone with iOS 18 or later. The Dynamic Island needs iPhone 14 Pro or newer.
 
 ---
 

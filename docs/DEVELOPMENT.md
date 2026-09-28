@@ -6,7 +6,7 @@ Everything you need to build Hyperday from source. For how the code fits togethe
 
 | | |
 |---|---|
-| Device | iPhone with iOS 17 or later (Dynamic Island on iPhone 14 Pro and later; Liquid Glass on iOS 26+) |
+| Device | iPhone with iOS 18 or later (Dynamic Island on iPhone 14 Pro and later; Liquid Glass on iOS 26+) |
 | Mac | macOS with **Xcode 26 or later** (the Liquid Glass APIs need the iOS 26 SDK) |
 | Tools | [Homebrew](https://brew.sh), [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`) |
 | Apple account | A free Apple ID works for personal installs (they expire after 7 days). Push updates, TestFlight and the App Store need the [Apple Developer Program](https://developer.apple.com/programs/). |
@@ -22,7 +22,7 @@ cd Hyperday
 `deploy.sh` does the following:
 1. Finds your signing team from your Apple Development certificate and saves it in `.team`, which is not committed.
 2. Generates the Xcode project from `project.yml`.
-3. Builds the app for iOS.
+3. Builds the app for iOS, signed with the App Group the widgets need. If your Apple ID can't use App Groups (a free account), it builds without them, remembers that in `.no-app-group`, and the Home Screen widgets show a notice instead of your day. Delete `.no-app-group` after joining the Apple Developer Program.
 4. Installs and launches it on your connected iPhone (cable, or the same Wi-Fi after one cabled run).
 
 If it can't find your team, run `DEVELOPMENT_TEAM=ABCDE12345 ./deploy.sh`.
@@ -32,6 +32,7 @@ If it can't find your team, run `DEVELOPMENT_TEAM=ABCDE12345 ./deploy.sh`.
 DEVELOPMENT_TEAM=ABCDE12345 xcodegen generate
 open DayLive.xcodeproj
 ```
+For widgets, set **Code Signing Entitlements** to `Hyperday.entitlements` on both targets (or use `deploy.sh`, which does this for you).
 Select your iPhone and press ▶︎. The first time, trust the developer profile on the phone: **Settings › General › VPN & Device Management**, and turn on **Developer Mode**.
 
 > The `.xcodeproj` is generated and git-ignored. Edit `project.yml`, not the project file.
@@ -47,6 +48,7 @@ Select your iPhone and press ▶︎. The first time, trust the developer profile
 DayLive/
 ├── project.yml                  # XcodeGen spec (targets, Info.plist keys, signing)
 ├── deploy.sh                    # build + install on iPhone
+├── Hyperday.entitlements        # App Group (group.com.prabhu.daylive) for widgets
 ├── App/                         # iOS app target
 │   ├── DayLiveApp.swift         # entry point, environment, background refresh
 │   ├── Assets.xcassets          # app icon (default/dark/tinted), HyperdayMark
@@ -60,14 +62,19 @@ DayLive/
 │   ├── LiveActivity/
 │   │   └── LiveActivityManager.swift  # start/update/restart, background refresh
 │   ├── Intents/
-│   │   └── AddBlockIntent.swift # Siri / Shortcuts
+│   │   ├── AddBlockIntent.swift # Siri / Shortcuts (add, what's next, start my day, I'm done, deep work)
+│   │   └── FocusFilter.swift    # Focus filter (everything / work / personal / nothing)
+│   ├── Recap/
+│   │   └── WeeklyRecap.swift    # Sunday 7 PM notification + recap card
 │   └── Views/                   # Today, Calendar, Stats, Settings, sheets, components
 ├── Shared/                      # compiled into both targets
 │   ├── DayActivityAttributes.swift   # Live Activity data contract
 │   ├── BlockActionIntent.swift       # Step / Done / Start next button
-│   └── LiveActivityViews.swift       # Lock Screen card + pieces
+│   ├── LiveActivityViews.swift       # Lock Screen card, Watch card + pieces
+│   └── WidgetData.swift              # today's blocks handed to widgets via the App Group
 ├── Widget/                      # Widget extension (Live Activity UI)
-│   ├── DayLiveWidget.swift
+│   ├── DayLiveWidget.swift      # Live Activity + Dynamic Island + Watch Smart Stack
+│   ├── HyperdayWidgets.swift    # Home Screen / Lock Screen / StandBy widgets
 │   └── Assets.xcassets          # HyperdayMark icon for the card
 └── docs/                        # privacy, architecture, images
 ```
@@ -78,7 +85,8 @@ DayLive/
 
 See [ARCHITECTURE.md](ARCHITECTURE.md). In short:
 - **SwiftUI + ObservableObject stores** (`BlockStore`, `CategoryStore`, `HistoryStore`, `LiveActivityManager`), all on the main actor, persisted as JSON.
-- **No App Group needed.** The widget only renders `ContentState`, and `LiveActivityIntent`s run in the app process.
+- **The Live Activity needs no App Group.** It only renders `ContentState`, and `LiveActivityIntent`s run in the app process.
+- **Home Screen widgets read `widget-day.json`** from the App Group `group.com.prabhu.daylive`. `LiveActivityManager` writes it on every refresh (only when it changed) and reloads the timelines.
 - **`DayEngine` is pure**, so it can be unit tested without a device.
 
 ## Configuration and data
@@ -89,7 +97,9 @@ See [ARCHITECTURE.md](ARCHITECTURE.md). In short:
 | `daylive-categories.json` | categories, rules, fallback, calendar colors |
 | `daylive-history.json` | one record per day, used by Stats |
 
-Settings stored in `UserDefaults`: `appearance`, `autoStartActivity`, `activityStartedAt`.
+App Group container: `widget-day.json` (today's blocks for the widgets).
+
+Settings stored in `UserDefaults`: `appearance`, `autoStartActivity`, `activityStartedAt`, `focusFilterShow`.
 
 ## Known limitations
 
@@ -97,7 +107,9 @@ Settings stored in `UserDefaults`: `appearance`, `autoStartActivity`, `activityS
 - Live Activities last about 8 hours. Hyperday restarts the activity only while the app is open.
 - All-day events are not shown yet.
 - Stats count what you tap (Done, steps). Hyperday can't know whether you attended a meeting. "Ran over" isn't measurable, so it isn't shown.
-- Personal installs with a free Apple ID expire after 7 days.
+- Personal installs with a free Apple ID expire after 7 days, and can't use App Groups, so Home Screen widgets need the Apple Developer Program.
+- The weekly recap notification's text uses the numbers from the last time you opened the app before Sunday 7 PM; the recap screen itself is always current.
+- Apple doesn't let apps turn a Focus on. "Start Deep Work" starts the block; pair it with the Focus action in a Shortcut.
 
 ## Contribution notes
 
