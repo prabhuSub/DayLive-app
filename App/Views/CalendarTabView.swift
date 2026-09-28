@@ -61,7 +61,7 @@ struct CalendarTabView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
-                    .padding(.bottom, 130)
+                    .padding(.bottom, 40)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }

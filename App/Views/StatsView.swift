@@ -47,7 +47,7 @@ struct StatsView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 18)
-                    .padding(.bottom, 130)
+                    .padding(.bottom, 40)
                 }
             }
             .background(Theme.section)

@@ -38,7 +38,7 @@ struct TodayView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 20)
-                    .padding(.bottom, 130)
+                    .padding(.bottom, 40)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }

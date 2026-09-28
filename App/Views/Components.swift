@@ -350,79 +350,37 @@ enum AppTab: String, CaseIterable, Identifiable {
     }
 }
 
-/// Floating tab bubble. On iOS 26+ it's Liquid Glass; the selected pill slides between tabs.
-struct FloatingTabBar: View {
-    @Binding var selection: AppTab
-    @Namespace private var pill
-
-    var body: some View {
-        if #available(iOS 26.0, *) {
-            GlassEffectContainer(spacing: 8) {
-                items(glass: true)
-                    .glassEffect(.regular.interactive(), in: .capsule)
-            }
-        } else {
-            items(glass: false)
-                .background(Capsule().fill(Theme.card))
-                .overlay(Capsule().stroke(Theme.border, lineWidth: 1))
-                .shadow(color: .black.opacity(0.15), radius: 12, y: 6)
-        }
-    }
-
-    private func items(glass: Bool) -> some View {
-        HStack(spacing: 2) {
-            ForEach(AppTab.allCases) { tab in
-                let on = tab == selection
-                Button {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) { selection = tab }
-                } label: {
-                    VStack(spacing: 2) {
-                        Image(systemName: tab.icon)
-                            .font(.system(size: 17, weight: .medium))
-                            .symbolEffect(.bounce, value: on)
-                        Text(tab.title).font(.system(size: 10, weight: .semibold))
-                    }
-                    .foregroundStyle(on ? Theme.text : Theme.muted)
-                    .frame(width: 74, height: 46)
-                    .background {
-                        if on {
-                            Capsule()
-                                .fill(Theme.navActive.opacity(glass ? 0.75 : 1))
-                                .matchedGeometryEffect(id: "selectedTab", in: pill)
-                        }
-                    }
-                    .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(tab.title)
-                .accessibilityAddTraits(on ? .isSelected : [])
-            }
-        }
-        .padding(5)
-    }
-}
-
+/// Apple's native tab bar: on iOS 26+ it is the Liquid Glass bar with the press-and-drag lens
+/// and it shrinks when you scroll down.
 struct RootView: View {
     @State private var tab: AppTab = .today
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            Group {
-                switch tab {
-                case .today: TodayView()
-                case .calendar: CalendarTabView()
-                case .stats: StatsView()
-                case .settings: SettingsView()
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .transition(.opacity)
-            .id(tab)
-
-            FloatingTabBar(selection: $tab)
-                .padding(.bottom, 6)
+        TabView(selection: $tab) {
+            TodayView()
+                .tabItem { Label(AppTab.today.title, systemImage: AppTab.today.icon) }
+                .tag(AppTab.today)
+            CalendarTabView()
+                .tabItem { Label(AppTab.calendar.title, systemImage: AppTab.calendar.icon) }
+                .tag(AppTab.calendar)
+            StatsView()
+                .tabItem { Label(AppTab.stats.title, systemImage: AppTab.stats.icon) }
+                .tag(AppTab.stats)
+            SettingsView()
+                .tabItem { Label(AppTab.settings.title, systemImage: AppTab.settings.icon) }
+                .tag(AppTab.settings)
         }
-        .background(Theme.bg.ignoresSafeArea())
-        .ignoresSafeArea(.keyboard)
+        .tint(Theme.text)
+        .modifier(MinimizeTabBarOnScroll())
+    }
+}
+
+private struct MinimizeTabBarOnScroll: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.tabBarMinimizeBehavior(.onScrollDown)
+        } else {
+            content
+        }
     }
 }
