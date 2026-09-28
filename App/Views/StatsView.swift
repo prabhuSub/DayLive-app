@@ -5,6 +5,7 @@ struct StatsView: View {
     @EnvironmentObject private var history: HistoryStore
     @EnvironmentObject private var categories: CategoryStore
     @State private var range: StatsRange = .week
+    @State private var showRecap = false
 
     var body: some View {
         let s = history.summary(range)
@@ -44,6 +45,10 @@ struct StatsView: View {
                         categoryCard(s)
                         meetingCard(s)
                         blocksCard(s)
+                        if !s.isEmpty {
+                            Button("See weekly recap") { showRecap = true }
+                                .buttonStyle(SecondaryButtonStyle())
+                        }
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 18)
@@ -52,7 +57,8 @@ struct StatsView: View {
             }
             .background(Theme.section)
         }
-        .task { await LiveActivityManager.shared.refresh() }   // records today before showing numbers
+        .task { await LiveActivityManager.shared.refresh() }
+        .fullScreenCover(isPresented: $showRecap) { WeeklyRecapView() }   // records today before showing numbers
     }
 
     private func hours(_ h: Double) -> String {

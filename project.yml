@@ -31,6 +31,7 @@ targets:
         UIRequiresFullScreen: true   # portrait-only iPhone app; silences the orientation warning
         NSSupportsLiveActivities: true
         NSCalendarsFullAccessUsageDescription: "Hyperday reads your calendar events to show them in your day, calendar and Live Activity. They never leave your iPhone."
+        NSPhotoLibraryAddUsageDescription: "Hyperday saves your weekly recap image to Photos when you tap Save image."
         UIBackgroundModes: [fetch]
         BGTaskSchedulerPermittedIdentifiers: [com.prabhu.daylive.refresh]
     settings:

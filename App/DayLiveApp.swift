@@ -1,5 +1,6 @@
 import EventKit
 import SwiftUI
+import UserNotifications
 
 @main
 struct DayLiveApp: App {
@@ -9,6 +10,12 @@ struct DayLiveApp: App {
     @StateObject private var activity = LiveActivityManager.shared
     @StateObject private var categories = CategoryStore.shared
     @StateObject private var history = HistoryStore.shared
+    @StateObject private var recap = RecapCenter.shared
+
+    init() {
+        // Must be set before launch finishes so a tap on the Sunday recap opens it.
+        UNUserNotificationCenter.current().delegate = RecapCenter.shared
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -19,13 +26,17 @@ struct DayLiveApp: App {
                 .environmentObject(activity)
                 .environmentObject(categories)
                 .environmentObject(history)
+                .fullScreenCover(isPresented: $recap.showing) { WeeklyRecapView() }
                 .onReceive(NotificationCenter.default.publisher(for: .EKEventStoreChanged)) { _ in
                     Task { await LiveActivityManager.shared.refresh() }
                 }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
-                Task { await LiveActivityManager.shared.refresh() }
+                Task {
+                    await LiveActivityManager.shared.refresh()
+                    await RecapCenter.shared.schedule()
+                }
             }
         }
         .backgroundTask(.appRefresh(BackgroundRefresh.id)) {
