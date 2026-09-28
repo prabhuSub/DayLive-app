@@ -12,6 +12,7 @@ struct CalendarTabView: View {
     @State private var showTasks = true
     @State private var showDeclined = false
     @State private var editing: Block?
+    @State private var scrollTick = 0   // bumped on every date tap so the list scrolls even if the date didn't change
 
     private let cal = Calendar.current
 
@@ -21,6 +22,7 @@ struct CalendarTabView: View {
 
         VStack(spacing: 0) {
             HeaderBar(section: "Calendar")
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     VStack(alignment: .leading, spacing: 14) {
@@ -47,6 +49,7 @@ struct CalendarTabView: View {
                         if mode == .agenda {
                             ForEach(weekDays, id: \.self) { day in
                                 daySection(day, items: byDay[day] ?? [])
+                                    .id(day)
                             }
                         } else if mode == .week {
                             WeekGrid(days: weekDays, byDay: byDay,
@@ -57,6 +60,7 @@ struct CalendarTabView: View {
                                 .cardBox(padding: 0)
                         } else {
                             daySection(selected, items: byDay[selected] ?? [])
+                                .id(selected)
                         }
                     }
                     .padding(.horizontal, 20)
@@ -66,6 +70,15 @@ struct CalendarTabView: View {
                 }
             }
             .background(Theme.section)
+            .onChange(of: scrollTick) { _, _ in
+                // Let the new week/month lay out first, then glide to the day.
+                DispatchQueue.main.async {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        proxy.scrollTo(selected, anchor: .top)
+                    }
+                }
+            }
+            }
         }
         .sheet(item: $editing) { block in
             BlockEditorSheet(
@@ -126,7 +139,7 @@ struct CalendarTabView: View {
             Spacer()
             HStack(spacing: 4) {
                 navButton("chevron.left") { shift(-1) }
-                Button("Today") { selected = cal.startOfDay(for: .now) }
+                Button("Today") { tapDay(cal.startOfDay(for: .now), fromTodayButton: true) }
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Theme.text)
                     .buttonStyle(.plain)
@@ -161,6 +174,14 @@ struct CalendarTabView: View {
         .buttonStyle(.plain)
     }
 
+    /// Tap a date: the list below jumps to it. Tap the same date again: back to today.
+    private func tapDay(_ day: Date, fromTodayButton: Bool = false) {
+        let today = cal.startOfDay(for: .now)
+        let target = (!fromTodayButton && cal.isDate(day, inSameDayAs: selected)) ? today : cal.startOfDay(for: day)
+        withAnimation(.easeOut(duration: 0.2)) { selected = target }
+        scrollTick += 1
+    }
+
     private func shift(_ direction: Int) {
         let next = mode != .month
             ? cal.date(byAdding: .day, value: 7 * direction, to: selected)
@@ -173,7 +194,7 @@ struct CalendarTabView: View {
     private func weekStrip(byDay: [Date: [Block]]) -> some View {
         HStack(spacing: 2) {
             ForEach(weekDays, id: \.self) { day in
-                Button { selected = day } label: {
+                Button { tapDay(day) } label: {
                     VStack(spacing: 4) {
                         Text(day.formatted(.dateTime.weekday(.narrow)))
                             .font(.system(size: 10, weight: .bold))
@@ -209,7 +230,7 @@ struct CalendarTabView: View {
             LazyVGrid(columns: columns, spacing: 0) {
                 ForEach(Array(monthDays.enumerated()), id: \.offset) { _, day in
                     if let day {
-                        Button { selected = day } label: {
+                        Button { tapDay(day) } label: {
                             VStack(spacing: 3) {
                                 dayNumber(day, size: 28, dimPast: true)
                                 dots(byDay[day] ?? [], faded: day < today)
