@@ -180,14 +180,16 @@ struct BlockActionButton: View {
             Button(intent: BlockActionIntent(blockID: id, action: action)) {
                 HStack(spacing: 5) {
                     Image(systemName: buttonSymbol(action))
-                        .foregroundStyle(action == .checkStep ? Color(white: 0.62) : Color.white)
+                        .foregroundStyle(action == .checkStep ? Color(white: 0.3) : Color.white)
                     Text(buttonTitle(action))
-                        .foregroundStyle(action == .checkStep ? DayLiveStyle.stepYellow : Color.white)
+                        .foregroundStyle(action == .checkStep ? Color.black : Color.white)
                 }
                     .font(.system(size: 14, weight: .semibold))
                     .padding(.horizontal, 14)
                     .frame(height: 36)
-                    .background(.white.opacity(0.22), in: Capsule())
+                    .background(action == .checkStep ? AnyShapeStyle(DayLiveStyle.stepYellow)
+                                                     : AnyShapeStyle(Color.white.opacity(0.22)),
+                                in: Capsule())
             }
             .buttonStyle(.plain)
             .foregroundStyle(.white)
