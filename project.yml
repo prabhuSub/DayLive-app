@@ -30,7 +30,7 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIRequiresFullScreen: true   # portrait-only iPhone app; silences the orientation warning
         NSSupportsLiveActivities: true
-        NSCalendarsFullAccessUsageDescription: "Hyperday reads today's calendar events so they show up in your day timeline."
+        NSCalendarsFullAccessUsageDescription: "Hyperday reads your calendar events to show them in your day, calendar and Live Activity. They never leave your iPhone."
         UIBackgroundModes: [fetch]
         BGTaskSchedulerPermittedIdentifiers: [com.prabhu.daylive.refresh]
     settings:
