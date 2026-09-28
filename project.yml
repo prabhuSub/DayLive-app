@@ -1,0 +1,57 @@
+name: DayLive
+options:
+  bundleIdPrefix: com.prabhu
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    TARGETED_DEVICE_FAMILY: "1"
+    DEVELOPMENT_TEAM: ""          # pick your team in Xcode > Signing & Capabilities
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  DayLive:
+    type: application
+    platform: iOS
+    sources:
+      - App
+      - Shared
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: DayLive
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        NSSupportsLiveActivities: true
+        NSCalendarsFullAccessUsageDescription: "DayLive reads today's calendar events so they show up in your day timeline."
+        UIBackgroundModes: [fetch]
+        BGTaskSchedulerPermittedIdentifiers: [com.prabhu.daylive.refresh]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.prabhu.daylive
+    dependencies:
+      - target: DayLiveWidget
+
+  DayLiveWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - Widget
+      - Shared/DayActivityAttributes.swift
+      - Shared/BlockActionIntent.swift
+      - Shared/LiveActivityViews.swift
+    info:
+      path: Widget/Info.plist
+      properties:
+        CFBundleDisplayName: DayLive
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.prabhu.daylive.widget
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) WIDGET_EXTENSION"
