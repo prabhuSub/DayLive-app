@@ -8,6 +8,7 @@ enum DayLiveStyle {
     static let glassOpacity = 0.42
     static let calendarBlue = Color(red: 10 / 255, green: 132 / 255, blue: 255 / 255)
     static let planGreen = Color(red: 36 / 255, green: 138 / 255, blue: 61 / 255)
+    static let stepYellow = Color(red: 255 / 255, green: 214 / 255, blue: 10 / 255)   // #FFD60A
 }
 
 extension Color {
@@ -177,7 +178,12 @@ struct BlockActionButton: View {
     var body: some View {
         if let id = state.actionBlockID, let action = state.action {
             Button(intent: BlockActionIntent(blockID: id, action: action)) {
-                Label(buttonTitle(action), systemImage: buttonSymbol(action))
+                HStack(spacing: 5) {
+                    Image(systemName: buttonSymbol(action))
+                        .foregroundStyle(action == .checkStep ? Color(white: 0.62) : Color.white)
+                    Text(buttonTitle(action))
+                        .foregroundStyle(action == .checkStep ? DayLiveStyle.stepYellow : Color.white)
+                }
                     .font(.system(size: 14, weight: .semibold))
                     .padding(.horizontal, 14)
                     .frame(height: 36)
