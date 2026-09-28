@@ -18,6 +18,7 @@ targets:
   DayLive:
     type: application
     platform: iOS
+    scheme: {}          # shared scheme so ./deploy.sh can build from Terminal
     sources:
       - App
       - Shared
