@@ -14,7 +14,7 @@ struct DayLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: DayActivityAttributes.self) { context in
             // Lock Screen / banner
-            LockScreenCard(state: context.state, isStale: context.isStale)
+            ActivityFamilyCard(state: context.state, isStale: context.isStale)
                 .activityBackgroundTint(DayLiveStyle.cardTint.opacity(DayLiveStyle.glassOpacity))
                 .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
@@ -61,5 +61,6 @@ struct DayLiveActivityWidget: Widget {
             }
             .keylineTint(context.state.accentColor)
         }
+        .supplementalActivityFamilies([.small])   // Apple Watch Smart Stack (watchOS 11 / iOS 18)
     }
 }

@@ -263,3 +263,60 @@ struct BlockActionButton: View {
         }
     }
 }
+
+/// Apple Watch Smart Stack (and CarPlay) version of the card: [mark] 26:10 · Next 10:30, title, bar + button.
+struct WatchCard: View {
+    let state: DayActivityAttributes.ContentState
+    var isStale: Bool = false
+
+    private var nextTime: String? {
+        guard !isStale, let r = state.label.range(of: " at ") else { return nil }
+        return "Next " + state.label[r.upperBound...]
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 5) {
+                AppMark(size: 14)
+                if let end = state.currentEnd, end > Date.now {
+                    Text(timerInterval: Date.now...end, countsDown: true)
+                        .monospacedDigit()
+                        .font(.system(size: 13, weight: .semibold))
+                        .frame(maxWidth: 46, alignment: .leading)
+                }
+                Spacer(minLength: 2)
+                if let nextTime {
+                    Text(nextTime)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.7))
+                        .lineLimit(1)
+                }
+            }
+            Text(state.title)
+                .font(.system(size: 16, weight: .bold))
+                .lineLimit(1)
+            HStack(spacing: 6) {
+                SegmentBar(segments: state.segments, accent: state.accentColor, height: 4)
+                BlockActionButton(state: state)
+                    .scaleEffect(0.85)
+            }
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+    }
+}
+
+/// Picks the iPhone Lock Screen card or the compact Watch card.
+struct ActivityFamilyCard: View {
+    @Environment(\.activityFamily) private var family
+    let state: DayActivityAttributes.ContentState
+    var isStale: Bool = false
+
+    var body: some View {
+        switch family {
+        case .small: WatchCard(state: state, isStale: isStale)
+        default: LockScreenCard(state: state, isStale: isStale)
+        }
+    }
+}
