@@ -15,8 +15,8 @@ Everything you need to build Hyperday from source. For how the code fits togethe
 
 ### One command
 ```bash
-git clone https://github.com/prabhuSub/DayLive-app.git
-cd DayLive-app
+git clone https://github.com/prabhuSub/Hyperday.git
+cd Hyperday
 ./deploy.sh
 ```
 `deploy.sh` does the following:

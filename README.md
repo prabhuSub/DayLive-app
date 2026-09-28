@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="#download">Download</a> ·
-  <a href="https://github.com/prabhuSub/DayLive-app/issues">Report an issue</a> ·
+  <a href="https://github.com/prabhuSub/Hyperday/issues">Report an issue</a> ·
   <a href="docs/PRIVACY.md">Privacy</a>
 </p>
 
@@ -19,8 +19,8 @@
   <img src="https://img.shields.io/badge/status-early%20preview-E31937" alt="Status: early preview">
   <img src="https://img.shields.io/badge/tracking-none-3E6AE1" alt="No tracking">
   <img src="https://img.shields.io/badge/works-offline-30D158" alt="Works offline">
-  <img src="https://img.shields.io/github/stars/prabhuSub/DayLive-app?style=social" alt="GitHub stars">
-  <img src="https://img.shields.io/github/commit-activity/m/prabhuSub/DayLive-app?label=updates" alt="Updates per month">
+  <img src="https://img.shields.io/github/stars/prabhuSub/Hyperday?style=social" alt="GitHub stars">
+  <img src="https://img.shields.io/github/commit-activity/m/prabhuSub/Hyperday?label=updates" alt="Updates per month">
 </p>
 
 ---
