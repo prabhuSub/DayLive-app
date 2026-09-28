@@ -1,3 +1,4 @@
+import AppIntents
 import SwiftUI
 import UIKit
 
@@ -50,6 +51,8 @@ struct SettingsView: View {
                     calendarsCard
 
                     rulesCard
+
+                    focusCard
 
                     VStack(alignment: .leading, spacing: 10) {
                         Caps("Live Activity")
@@ -104,6 +107,31 @@ struct SettingsView: View {
             RuleEditorSheet()
                 .presentationDetents([.medium])
         }
+    }
+
+    private var focusCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Caps("Focus & Siri")
+            Text("Focus filters: in iOS Settings › Focus › Work › Add Filter › Hyperday, choose what Hyperday shows while that Focus is on (Work only, Personal only…). Right now: \(FocusFilterState.current.rawValue).")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.muted)
+            Text("Deep Work + Focus: Apple doesn't let apps turn Focus on. In Shortcuts, make one shortcut with “Start Deep Work” (Hyperday) and “Set Focus: Work”, then run it from Siri or the Action Button.")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.muted)
+            ShortcutsLink()
+                .shortcutsLinkStyle(.automaticOutline)
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(["What's next in Hyperday", "Start my day in Hyperday", "I'm done in Hyperday", "Start deep work in Hyperday"], id: \.self) { phrase in
+                    Text("“Hey Siri, \(phrase)”")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Theme.text)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .overlay(alignment: .top) { Rectangle().fill(Theme.border).frame(height: 1) }
+                }
+            }
+        }
+        .cardBox()
     }
 
     private var calendarsCard: some View {
