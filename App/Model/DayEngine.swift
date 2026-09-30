@@ -11,6 +11,7 @@ struct DaySnapshot {
     var dayProgress: Double
     var currentSteps: [Step] = []   // checklist of the current block (drives the bar when non-empty)
     var accentHex: String?          // category color of the current block (set by LiveActivityManager)
+    var iconName: String?           // category icon of the current block (set by LiveActivityManager)
     var overtime = false            // current block was started and is past its planned end
     var startedAt: Date?            // current block was started by tapping Start
     var freeStart: Date?            // no block now: when the free time began
@@ -89,7 +90,8 @@ struct DaySnapshot {
             freeStart: current == nil && next != nil ? freeStart : nil,
             nextStart: current == nil ? next?.start : nil,
             nextTitle: current == nil ? next?.title : nil,
-            overSince: overtime ? current?.end : nil
+            overSince: overtime ? current?.end : nil,
+            iconName: current == nil ? nil : iconName
         )
     }
 }

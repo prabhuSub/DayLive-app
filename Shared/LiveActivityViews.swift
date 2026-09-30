@@ -87,7 +87,7 @@ struct LockScreenCard: View {
                     }
                 }
                 Spacer(minLength: 0)
-                SourceIcon(source: state.source, size: 44, tint: state.source == .free ? nil : state.accentColor)
+                SourceIcon(source: state.source, size: 44, tint: state.source == .free ? nil : state.accentColor, iconName: state.iconName)
             }
             .padding(.top, 2)
 
@@ -124,14 +124,14 @@ struct SourceIcon: View {
     let source: BlockSource
     var size: CGFloat = 40
     var tint: Color? = nil   // category color; overrides the source color
+    var iconName: String? = nil   // category icon; overrides the source icon
 
     var body: some View {
         RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
             .fill(tint ?? background)
             .frame(width: size, height: size)
             .overlay(
-                Image(systemName: symbol)
-                    .font(.system(size: size * 0.48, weight: .semibold))
+                HDIcon(iconName ?? symbol, size: size * 0.56)
                     .foregroundStyle(.white)
             )
             .accessibilityLabel(label)
@@ -139,9 +139,9 @@ struct SourceIcon: View {
 
     private var symbol: String {
         switch source {
-        case .calendar: return "calendar"
-        case .plan:     return "pencil"
-        case .free:     return "clock"
+        case .calendar: return "event"
+        case .plan:     return "edit"
+        case .free:     return "free"
         }
     }
 
@@ -284,7 +284,7 @@ struct BlockActionButton: View {
                 // Done and Step are yellow to pull your eye; "Start now" in free time stays grey.
                 let yellow = action != .startNext
                 HStack(spacing: 5) {
-                    Image(systemName: buttonSymbol(action))
+                    HDIcon(buttonSymbol(action), size: 15)
                         .foregroundStyle(yellow ? Color(white: 0.3) : Color.white)
                     Text(buttonTitle(action))
                         .foregroundStyle(yellow ? Color.black : Color.white)
@@ -311,9 +311,9 @@ struct BlockActionButton: View {
 
     private func buttonSymbol(_ action: BlockAction) -> String {
         switch action {
-        case .done:      return "checkmark"
-        case .startNext: return "play.fill"
-        case .checkStep: return "checkmark.circle"
+        case .done:      return "done"
+        case .startNext: return "start"
+        case .checkStep: return "step-done"
         }
     }
 }

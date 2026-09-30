@@ -84,6 +84,11 @@ struct CalendarTabView: View {
                     }
                 }
             }
+            // Always open on today; go back from there with ‹ or by tapping a date.
+            .onAppear { tapDay(cal.startOfDay(for: .now), fromTodayButton: true) }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                tapDay(cal.startOfDay(for: .now), fromTodayButton: true)
+            }
             }
         }
         .sheet(item: $editing) { block in
@@ -145,13 +150,13 @@ struct CalendarTabView: View {
                 .foregroundStyle(Theme.text)
             Spacer()
             HStack(spacing: 4) {
-                navButton("chevron.left") { shift(-1) }
+                navButton("back") { shift(-1) }
                 Button("Today") { tapDay(cal.startOfDay(for: .now), fromTodayButton: true) }
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Theme.text)
                     .buttonStyle(.plain)
                     .padding(.horizontal, 6)
-                navButton("chevron.right") { shift(1) }
+                navButton("next") { shift(1) }
             }
         }
     }
@@ -172,8 +177,7 @@ struct CalendarTabView: View {
 
     private func navButton(_ symbol: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 14, weight: .semibold))
+            HDIcon(symbol, size: 18)
                 .foregroundStyle(Theme.muted)
                 .frame(width: 30, height: 30)
                 .contentShape(Rectangle())
@@ -314,7 +318,8 @@ struct CalendarTabView: View {
                     Button { editing = block } label: {
                         BlockRow(block: block, now: now,
                                  color: categories.displayColor(for: block),
-                                 steps: store.steps(for: block.id))
+                                 steps: store.steps(for: block.id),
+                                 icon: categories.category(for: block).iconName)
                     }
                     .buttonStyle(.plain)
                 }

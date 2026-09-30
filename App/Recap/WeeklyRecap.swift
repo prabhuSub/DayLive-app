@@ -268,8 +268,7 @@ struct WeeklyRecapView: View {
                 HStack {
                     Spacer()
                     Button { dismiss() } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 15, weight: .semibold))
+                        HDIcon("close", size: 16)
                             .foregroundStyle(.white.opacity(0.8))
                             .frame(width: 34, height: 34)
                             .background(.white.opacity(0.12), in: Circle())

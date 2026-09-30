@@ -200,7 +200,8 @@ struct TodayView: View {
                     } label: {
                         BlockRow(block: block, now: now,
                                  color: categories.displayColor(for: block),
-                                 steps: store.steps(for: block.id))
+                                 steps: store.steps(for: block.id),
+                                 icon: categories.category(for: block).iconName)
                     }
                     .buttonStyle(.plain)
                 }
@@ -212,7 +213,7 @@ struct TodayView: View {
     /// Swipe right: Start (timer from now). Any block that hasn't ended.
     private func leadingActions(_ block: Block) -> [SwipeAction] {
         guard block.end > now else { return [] }
-        return [SwipeAction(title: "Start", icon: "play.fill", color: DayLiveStyle.planGreen) {
+        return [SwipeAction(title: "Start", icon: "start", color: DayLiveStyle.planGreen) {
             store.start(blockID: block.id, at: .now)
             Task { await activity.refresh() }
         }]
@@ -222,11 +223,11 @@ struct TodayView: View {
     private func trailingActions(_ block: Block) -> [SwipeAction] {
         guard block.source == .plan else { return [] }
         return [
-            SwipeAction(title: "Tomorrow", icon: "calendar.badge.clock", color: Theme.blue) {
+            SwipeAction(title: "Tomorrow", icon: "move", color: Theme.blue) {
                 store.move(id: block.id, byDays: 1)
                 Task { await activity.refresh() }
             },
-            SwipeAction(title: "Delete", icon: "trash", color: Theme.red) {
+            SwipeAction(title: "Delete", icon: "delete", color: Theme.red) {
                 store.delete(id: block.id)
                 Task { await activity.refresh() }
             },

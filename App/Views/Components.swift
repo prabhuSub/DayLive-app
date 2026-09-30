@@ -64,8 +64,7 @@ struct HeaderBar: View {
             Button {
                 appearance = (scheme == .dark ? Appearance.light : Appearance.dark).rawValue
             } label: {
-                Image(systemName: scheme == .dark ? "sun.max" : "moon")
-                    .font(.system(size: 14, weight: .medium))
+                HDIcon(scheme == .dark ? "sun" : "moon", size: 17)
                     .foregroundStyle(Theme.text)
                     .frame(width: 32, height: 32)
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
@@ -176,6 +175,7 @@ struct Chip: View {
     let title: String
     var color: Color? = nil
     var selected: Bool = false
+    var icon: String? = nil
     var action: () -> Void = {}
 
     var body: some View {
@@ -183,6 +183,9 @@ struct Chip: View {
             HStack(spacing: 6) {
                 if let color {
                     Circle().fill(color).frame(width: 8, height: 8)
+                }
+                if let icon {
+                    HDIcon(icon, size: 15).foregroundStyle(selected ? Theme.text : Theme.muted)
                 }
                 Text(title)
                     .font(.system(size: 13, weight: selected ? .semibold : .regular))
@@ -286,6 +289,7 @@ struct BlockRow: View {
     let color: Color
     var steps: [Step] = []
     var showNow = true
+    var icon: String? = nil
 
     private var detail: String {
         var parts: [String] = []
@@ -309,6 +313,10 @@ struct BlockRow: View {
                 .fill(color)
                 .opacity(done ? 0.35 : 1)
                 .frame(width: 3, height: 32)
+            if let icon {
+                HDIcon(icon, size: 18)
+                    .foregroundStyle(done ? Theme.faint : Theme.muted)
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text(block.title)
                     .font(.system(size: 15, weight: isNow ? .semibold : .regular))
@@ -323,8 +331,7 @@ struct BlockRow: View {
             Spacer(minLength: 6)
             if block.source == .calendar && !isNow {
                 // Calendar events are read-only in Hyperday (can't be moved or deleted here).
-                Image(systemName: "calendar")
-                    .font(.system(size: 12))
+                HDIcon("event", size: 14)
                     .foregroundStyle(Theme.faint)
                     .accessibilityLabel("Calendar event")
             }
@@ -349,10 +356,10 @@ enum AppTab: String, CaseIterable, Identifiable {
     var title: String { rawValue.capitalized }
     var icon: String {
         switch self {
-        case .today: return "list.bullet"
+        case .today: return "today"
         case .calendar: return "calendar"
-        case .stats: return "chart.bar"
-        case .settings: return "gearshape"
+        case .stats: return "stats"
+        case .settings: return "settings"
         }
     }
 }
@@ -365,16 +372,16 @@ struct RootView: View {
     var body: some View {
         TabView(selection: $tab) {
             TodayView()
-                .tabItem { Label(AppTab.today.title, systemImage: AppTab.today.icon) }
+                .tabItem { Label { Text(AppTab.today.title) } icon: { Image("hd-" + AppTab.today.icon).renderingMode(.template) } }
                 .tag(AppTab.today)
             CalendarTabView()
-                .tabItem { Label(AppTab.calendar.title, systemImage: AppTab.calendar.icon) }
+                .tabItem { Label { Text(AppTab.calendar.title) } icon: { Image("hd-" + AppTab.calendar.icon).renderingMode(.template) } }
                 .tag(AppTab.calendar)
             StatsView()
-                .tabItem { Label(AppTab.stats.title, systemImage: AppTab.stats.icon) }
+                .tabItem { Label { Text(AppTab.stats.title) } icon: { Image("hd-" + AppTab.stats.icon).renderingMode(.template) } }
                 .tag(AppTab.stats)
             SettingsView()
-                .tabItem { Label(AppTab.settings.title, systemImage: AppTab.settings.icon) }
+                .tabItem { Label { Text(AppTab.settings.title) } icon: { Image("hd-" + AppTab.settings.icon).renderingMode(.template) } }
                 .tag(AppTab.settings)
         }
         .tint(Theme.text)
@@ -456,7 +463,7 @@ struct SwipeRow<Content: View>: View {
             a.action()
         } label: {
             VStack(spacing: 4) {
-                Image(systemName: a.icon).font(.system(size: 17, weight: .medium))
+                HDIcon(a.icon, size: 20)
                 Text(a.title).font(.system(size: 11, weight: .semibold))
             }
             .foregroundStyle(.white)

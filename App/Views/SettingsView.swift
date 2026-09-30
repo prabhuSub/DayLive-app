@@ -35,7 +35,7 @@ struct SettingsView: View {
                         Caps("Categories")
                         FlowLayout(spacing: 8) {
                             ForEach(categories.categories) { c in
-                                Chip(title: c.name, color: c.color) { editingCategory = c }
+                                Chip(title: c.name, color: c.color, icon: c.iconName) { editingCategory = c }
                             }
                             Chip(title: "+ New") {
                                 editingCategory = Category(id: UUID().uuidString, name: "",
@@ -161,7 +161,7 @@ struct SettingsView: View {
                         Text(custom == nil ? "By category" : "Custom")
                             .font(.system(size: 12))
                             .foregroundStyle(Theme.muted)
-                        Image(systemName: "chevron.right")
+                        HDIcon("chevron", size: 14)
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(Theme.faint)
                     }
@@ -208,9 +208,9 @@ struct SettingsView: View {
                     }
                     Spacer()
                     if index > 0 {
-                        iconButton("arrow.up", label: "Move up") { categories.moveRuleUp(id: rule.id) }
+                        iconButton("up", label: "Move up") { categories.moveRuleUp(id: rule.id) }
                     }
-                    iconButton("xmark", label: "Delete rule") { categories.deleteRule(id: rule.id) }
+                    iconButton("close", label: "Delete rule") { categories.deleteRule(id: rule.id) }
                 }
                 .padding(.vertical, 10)
                 .overlay(alignment: .top) { Rectangle().fill(Theme.border).frame(height: 1) }
@@ -229,7 +229,7 @@ struct SettingsView: View {
                     HStack(spacing: 6) {
                         Circle().fill(categories.fallback.color).frame(width: 8, height: 8)
                         Text(categories.fallback.name).font(.system(size: 12))
-                        Image(systemName: "chevron.up.chevron.down").font(.system(size: 9))
+                        HDIcon("down", size: 12)
                     }
                     .foregroundStyle(Theme.muted)
                 }
@@ -242,8 +242,7 @@ struct SettingsView: View {
 
     private func iconButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 11, weight: .semibold))
+            HDIcon(symbol, size: 15)
                 .foregroundStyle(Theme.muted)
                 .frame(width: 28, height: 28)
                 .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.border, lineWidth: 1))
@@ -284,6 +283,25 @@ struct CategoryEditorSheet: View {
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Color \(hex)")
+                        }
+                    }
+                }
+                .cardBox()
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Caps("Icon")
+                    FlowLayout(spacing: 10) {
+                        ForEach(HDIcons.categoryChoices, id: \.self) { name in
+                            let on = category.iconName == name
+                            Button { category.icon = name } label: {
+                                HDIcon(name, size: 22)
+                                    .foregroundStyle(on ? Theme.bg : Theme.text)
+                                    .frame(width: 42, height: 42)
+                                    .background(RoundedRectangle(cornerRadius: 8).fill(on ? Theme.text : Theme.card))
+                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Icon \(name)")
                         }
                     }
                 }

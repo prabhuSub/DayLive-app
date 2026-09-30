@@ -50,6 +50,7 @@ targets:
       - Shared/BlockActionIntent.swift
       - Shared/LiveActivityViews.swift
       - Shared/WidgetData.swift
+      - Shared/HDIcon.swift
     info:
       path: Widget/Info.plist
       properties:

@@ -186,7 +186,8 @@ final class BlockStore: ObservableObject {
     // MARK: Persistence
 
     private func pruneOld() {
-        guard let cutoff = Calendar.current.date(byAdding: .day, value: -14, to: .now) else { return }
+        // Keep two years of your tasks so the Calendar tab can look back at any past day.
+        guard let cutoff = Calendar.current.date(byAdding: .day, value: -730, to: .now) else { return }
         let before = planBlocks.count
         let overridesBefore = overrides.count
         planBlocks.removeAll { $0.end < cutoff }
@@ -204,7 +205,7 @@ final class BlockStore: ObservableObject {
         extraCategories = extraCategories.filter { key, _ in
             key.hasPrefix("plan-") ? liveIDs.contains(key) : true
         }
-        if overrides.count > 300 { overrides = [:] }   // crude cap for v1
+        if overrides.count > 20_000 { overrides = [:] }   // safety cap; ~2 years of Done taps
         if planBlocks.count != before || overrides.count != overridesBefore { save() }
     }
 

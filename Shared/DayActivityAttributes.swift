@@ -36,6 +36,7 @@ struct DayActivityAttributes: ActivityAttributes {
         var nextStart: Date?         // …to here, the next block's start)
         var nextTitle: String?       // free time: "Standup"
         var overSince: Date?         // started block past its planned end: counts up from here
+        var iconName: String?        // category icon of the live block ("deepwork")
     }
 
     var dayStart: Date

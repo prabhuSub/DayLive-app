@@ -70,6 +70,7 @@ final class LiveActivityManager: ObservableObject {
             now: now
         )
         snap.accentHex = snap.current.map { CategoryStore.shared.displayColorHex(for: $0) }
+        snap.iconName = snap.current.map { CategoryStore.shared.category(for: $0).iconName }
         return snap
     }
 

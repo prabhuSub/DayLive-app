@@ -7,8 +7,10 @@ struct Category: Identifiable, Codable, Hashable {
     var id: String
     var name: String
     var colorHex: String
+    var icon: String? = nil   // asset name without "hd-"; nil = default for this category
 
     var color: Color { Color(hex: colorHex) }
+    var iconName: String { icon ?? HDIcons.defaultCategoryIcon(id) }
 }
 
 /// "Title has gym, run -> Fitness". Rules are checked top to bottom; first match wins.

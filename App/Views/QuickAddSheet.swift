@@ -52,7 +52,7 @@ struct DayPicker: View {
     private func option(_ title: String, on: Bool, icon: String? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 5) {
-                if let icon { Image(systemName: icon).font(.system(size: 12)) }
+                if let icon { HDIcon(icon, size: 15) }
                 Text(title).lineLimit(1)
             }
             .font(.system(size: 13, weight: .semibold))
@@ -79,7 +79,7 @@ struct MultiCategoryChips: View {
                 ForEach(store.categories) { c in
                     let on = selection.contains(c.id)
                     Chip(title: selection.first == c.id && selection.count > 1 ? "\(c.name) · color" : c.name,
-                         color: c.color, selected: on) {
+                         color: c.color, selected: on, icon: c.iconName) {
                         if on { selection.removeAll { $0 == c.id } } else { selection.append(c.id) }
                     }
                 }
@@ -248,8 +248,7 @@ struct BlockEditorSheet: View {
                             Button {
                                 step.done.toggle()
                             } label: {
-                                Image(systemName: step.done ? "checkmark.circle.fill" : "circle")
-                                    .font(.system(size: 22))
+                                HDIcon(step.done ? "step-done" : "step-open", size: 24)
                                     .foregroundStyle(step.done ? DayLiveStyle.accent : Color.secondary)
                             }
                             .buttonStyle(.plain)
@@ -261,8 +260,7 @@ struct BlockEditorSheet: View {
                     .onDelete { steps.remove(atOffsets: $0) }
 
                     HStack(spacing: 12) {
-                        Image(systemName: "plus.circle")
-                            .font(.system(size: 22))
+                        HDIcon("step-add", size: 24)
                             .foregroundStyle(.secondary)
                         TextField("Add a step", text: $newStep)
                             .focused($newStepFocused)
@@ -280,14 +278,14 @@ struct BlockEditorSheet: View {
                         Button {
                             save(startNow: true)
                         } label: {
-                            Label("Start now", systemImage: "play")
+                            Label { Text("Start now") } icon: { HDIcon("start") }
                         }
                     }
                     if isPlan {
                         Button {
                             save(moveDays: 1)
                         } label: {
-                            Label("Move to tomorrow", systemImage: "calendar.badge.clock")
+                            Label { Text("Move to tomorrow") } icon: { HDIcon("move") }
                         }
                         Button("Delete block", role: .destructive) {
                             onDelete()
