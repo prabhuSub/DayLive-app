@@ -22,35 +22,47 @@ struct DayLiveActivityWidget: Widget {
                 .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             DynamicIsland {
+                // Same layout as the Lock Screen card: [mark] ······ 1:26:10 left on top (beside the camera),
+                // then title + category icon, then bar + button.
                 DynamicIslandExpandedRegion(.leading) {
-                    SourceIcon(source: context.state.source, size: 34,
-                               tint: context.state.source == .free ? nil : context.state.accentColor)
-                        .padding(.leading, 4)
+                    AppMark(size: 22)
+                        .padding(.leading, 6)
+                        .frame(maxHeight: .infinity, alignment: .center)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    TimeLeft(end: context.state.currentEnd, accent: context.state.accentColor)
-                        .padding(.trailing, 4)
-                }
-                DynamicIslandExpandedRegion(.center) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(context.state.title)
-                            .font(.headline)
-                            .lineLimit(1)
-                        if let also = context.state.also {
-                            Text(also)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    TimerLabel(state: context.state)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(context.state.overSince != nil ? DayLiveStyle.stepYellow : context.state.accentColor)
+                        .lineLimit(1)
+                        .fixedSize()
+                        .padding(.trailing, 6)
+                        .frame(maxHeight: .infinity, alignment: .center)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    HStack(spacing: 12) {
-                        DayBar(state: context.state)
-                        BlockActionButton(state: context.state)
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(alignment: .center, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(context.state.title)
+                                    .font(.system(size: 20, weight: .bold))
+                                    .lineLimit(1)
+                                if let also = context.state.also {
+                                    Text(also)
+                                        .font(.system(size: 13))
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+                            }
+                            Spacer(minLength: 0)
+                            SourceIcon(source: context.state.source, size: 36,
+                                       tint: context.state.source == .free ? nil : context.state.accentColor)
+                        }
+                        HStack(spacing: 12) {
+                            DayBar(state: context.state)
+                            BlockActionButton(state: context.state)
+                        }
                     }
-                    .padding(.horizontal, 4)
+                    .padding(.horizontal, 6)
+                    .padding(.top, 4)
                 }
             } compactLeading: {
                 SourceIcon(source: context.state.source, size: 22,
