@@ -100,16 +100,19 @@ final class LiveActivityManager: ObservableObject {
             // Day's over: show "Day complete" briefly, then let iOS dismiss it.
             for a in running { await a.end(content, dismissalPolicy: .default) }
         } else if let activity = running.first {
+            // Only ever one Hyperday card: clear duplicates and ended cards still sitting on the Lock Screen.
+            await Self.endAll(except: activity.id)
             let startedAt = (UserDefaults.standard.object(forKey: Keys.startedAt) as? Date) ?? now
             if now.timeIntervalSince(startedAt) > maxAge && inForeground {
                 // Restart only in the foreground: a background request would fail and leave nothing on screen.
-                for a in running { await a.end(nil, dismissalPolicy: .immediate) }
+                await Self.endAll()
                 request(content)
             } else {
                 await activity.update(content)
             }
         } else if force || (autoStart && snap.hasAnythingLeft) {
             // Auto-start only when there's something to show; "Go Live" always starts.
+            await Self.endAll()
             request(content)
         }
 
@@ -152,6 +155,13 @@ final class LiveActivityManager: ObservableObject {
             await a.end(nil, dismissalPolicy: .immediate)
         }
         isRunning = false
+    }
+
+    /// Ends every Hyperday Live Activity immediately (including ended ones iOS keeps showing for up to 4 hours).
+    private static func endAll(except keep: String? = nil) async {
+        for a in Activity<DayActivityAttributes>.activities where a.id != keep {
+            await a.end(nil, dismissalPolicy: .immediate)
+        }
     }
 
     private func request(_ content: ActivityContent<DayActivityAttributes.ContentState>) {
