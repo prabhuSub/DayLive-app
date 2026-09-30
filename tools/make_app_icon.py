@@ -1,6 +1,6 @@
 """Hyperday app icon — "Now Line": your day as blocks, with a red line at now.
 
-    pip install cairosvg && python3 tools/make_app_icon.py [A|B|C]
+    pip install cairosvg && python3 tools/make_app_icon.py [O|A|B|C]   (O = original Now Line, the chosen one)
 
 Writes AppIcon (light / dark / tinted, 1024px) and the small HyperdayMark used on the Lock Screen card.
 """
@@ -13,6 +13,12 @@ RED, INK = "#E31937", "#111214"
 
 
 def glyph(v: str, fg="#fff", red=RED, dim=0.5) -> str:
+    if v == "O":   # the original Now Line: three stacked blocks, red now-line with a pin (chosen)
+        return (f'<rect x="18" y="26" width="46" height="11" rx="5.5" fill="{fg}"/>'
+                f'<rect x="30" y="44.5" width="52" height="11" rx="5.5" fill="{fg}" opacity=".55"/>'
+                f'<rect x="18" y="63" width="34" height="11" rx="5.5" fill="{fg}" opacity=".3"/>'
+                f'<rect x="55" y="18" width="4" height="64" rx="2" fill="{red}"/>'
+                f'<circle cx="57" cy="18" r="5" fill="{red}"/>')
     if v == "A":   # two blocks, vertical now-line with a pin
         return (f'<rect x="16" y="29" width="46" height="15" rx="7.5" fill="{fg}"/>'
                 f'<rect x="38" y="56" width="46" height="15" rx="7.5" fill="{fg}" opacity="{dim}"/>'
@@ -46,7 +52,7 @@ def mark_svg(v: str, size: int) -> str:
 
 
 if __name__ == "__main__":
-    v = (sys.argv[1] if len(sys.argv) > 1 else "A").upper()
+    v = (sys.argv[1] if len(sys.argv) > 1 else "O").upper()
     root = Path(__file__).resolve().parent.parent
     icon = root / "App/Assets.xcassets/AppIcon.appiconset"
     for variant in ("light", "dark", "tinted"):
