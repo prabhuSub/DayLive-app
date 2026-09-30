@@ -45,6 +45,14 @@ def svg(v: str, variant: str, size: int) -> str:
     return f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 100 100">{bg}{g}</svg>'
 
 
+def check_mark_svg(size: int) -> str:
+    # The Lock Screen / Island mark stays the red check (Prabhu's call), separate from the app icon.
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24">'
+            f'<rect width="24" height="24" rx="5.5" fill="{RED}"/>'
+            f'<path d="M6.2 12.6l3.9 3.9 7.7-8.4" fill="none" stroke="#fff" stroke-width="2.6" '
+            f'stroke-linecap="round" stroke-linejoin="round"/></svg>')
+
+
 def mark_svg(v: str, size: int) -> str:
     # Rounded-square mark for the Lock Screen card (drawn at ~20pt).
     return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 100 100">'
@@ -58,6 +66,6 @@ if __name__ == "__main__":
     for variant in ("light", "dark", "tinted"):
         cairosvg.svg2png(bytestring=svg(v, variant, 1024).encode(), write_to=str(icon / f"AppIcon-{variant}.png"))
     for cat in ("App", "Widget"):
-        cairosvg.svg2png(bytestring=mark_svg(v, 96).encode(),
+        cairosvg.svg2png(bytestring=check_mark_svg(96).encode(),
                          write_to=str(root / f"{cat}/Assets.xcassets/HyperdayMark.imageset/HyperdayMark.png"))
     print("app icon", v)

@@ -111,13 +111,14 @@ struct TodayView: View {
 
             HStack(spacing: 10) {
                 Button("Add block") { showingAdd = true }
-                    .buttonStyle(PrimaryButtonStyle())
+                    .buttonStyle(PrimaryButtonStyle(width: 132))
                 Button(activity.isRunning ? "Stop Live" : "Go Live") {
                     Task {
                         if activity.isRunning { await activity.stop() } else { await activity.start() }
                     }
                 }
-                .buttonStyle(SecondaryButtonStyle())
+                .buttonStyle(SecondaryButtonStyle(width: 132))
+                Spacer(minLength: 0)
             }
 
             if !activity.isRunning || activity.lastError != nil {
@@ -210,9 +211,9 @@ struct TodayView: View {
         .cardBox(padding: 0)
     }
 
-    /// Swipe right: Start (timer from now). Any block that hasn't ended.
+    /// Swipe right: Start (timer from now). Only blocks you planned; calendar events don't swipe.
     private func leadingActions(_ block: Block) -> [SwipeAction] {
-        guard block.end > now else { return [] }
+        guard block.source == .plan, block.end > now else { return [] }
         return [SwipeAction(title: "Start", icon: "start", color: DayLiveStyle.planGreen) {
             store.start(blockID: block.id, at: .now)
             Task { await activity.refresh() }

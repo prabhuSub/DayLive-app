@@ -48,9 +48,12 @@ struct CalendarTabView: View {
                                 .foregroundStyle(Theme.muted)
                         }
                         if mode == .agenda {
-                            ForEach(weekDays, id: \.self) { day in
-                                daySection(day, items: byDay[day] ?? [])
-                                    .id(day)
+                            // One continuous list: scroll back through past days or ahead, opens on today.
+                            LazyVStack(alignment: .leading, spacing: 10) {
+                                ForEach(agendaDays, id: \.self) { day in
+                                    daySection(day, items: byDay[day] ?? [])
+                                        .id(day)
+                                }
                             }
                         } else if mode == .week {
                             WeekGrid(days: weekDays, byDay: byDay,
@@ -78,7 +81,7 @@ struct CalendarTabView: View {
             .background(Theme.section)
             .onChange(of: scrollTick) { _, _ in
                 // Let the new week/month lay out first, then glide to the day.
-                DispatchQueue.main.async {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                     withAnimation(.easeInOut(duration: 0.3)) {
                         proxy.scrollTo(selected, anchor: .top)
                     }
@@ -122,7 +125,15 @@ struct CalendarTabView: View {
         return cells
     }
 
+    /// Agenda: 90 days back to 90 days ahead of the selected day.
+    private var agendaDays: [Date] {
+        (-90...90).compactMap { cal.date(byAdding: .day, value: $0, to: selected) }
+    }
+
     private var visibleRange: DateInterval {
+        if mode == .agenda, let first = agendaDays.first, let last = agendaDays.last {
+            return DateInterval(start: first, end: cal.date(byAdding: .day, value: 1, to: last) ?? last)
+        }
         if mode != .month {
             let start = weekDays.first ?? selected
             return DateInterval(start: start, end: cal.date(byAdding: .day, value: 7, to: start) ?? start)
@@ -198,6 +209,7 @@ struct CalendarTabView: View {
             ? cal.date(byAdding: .day, value: 7 * direction, to: selected)
             : cal.date(byAdding: .month, value: direction, to: selected)
         if let next { selected = cal.startOfDay(for: next) }
+        scrollTick += 1
     }
 
     // MARK: Week strip

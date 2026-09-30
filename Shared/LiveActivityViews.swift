@@ -10,6 +10,7 @@ enum DayLiveStyle {
     static let calendarBlue = Color(red: 10 / 255, green: 132 / 255, blue: 255 / 255)
     static let planGreen = Color(red: 36 / 255, green: 138 / 255, blue: 61 / 255)
     static let stepYellow = Color(red: 255 / 255, green: 214 / 255, blue: 10 / 255)   // #FFD60A
+    static let doneGreen = Color(red: 48 / 255, green: 209 / 255, blue: 88 / 255)     // #30D158
 }
 
 extension Color {
@@ -51,8 +52,8 @@ struct LockScreenCard: View {
             // Top row (like Tesla's card): [app icon] 26:10 left ······ Next: Standup 10:30 PM
             HStack(spacing: 7) {
                 AppMark(size: 20)
-                TimerLabel(state: state)
-                    .font(.system(size: 14, weight: .semibold))
+                TimerLabel(state: state, size: 16)
+                    .foregroundStyle(.white)
                     .fixedSize()
                 Spacer(minLength: 6)
                 if state.nextStart == nil || isStale {
@@ -222,32 +223,40 @@ struct TimeLeft: View {
 /// "1:26:10 left" · "+4:12 over" · "1:40:05 until Standup". Ticks on its own on the Lock Screen.
 struct TimerLabel: View {
     let state: DayActivityAttributes.ContentState
+    var size: CGFloat = 14
+
+    /// Timer text grows to fill its space on the Lock Screen, so give it an exact width:
+    /// "8:19:47" needs room for 7 characters, "26:10" for 5.
+    private func digits(_ interval: TimeInterval) -> CGFloat {
+        size * (interval >= 3600 ? 4.1 : 2.95)
+    }
 
     var body: some View {
-        if let over = state.overSince {
-            HStack(spacing: 0) {
-                Text("+")
-                Text(timerInterval: over...over.addingTimeInterval(24 * 3600), countsDown: false)
-                    .monospacedDigit()
-                    .frame(maxWidth: 52, alignment: .leading)
-                Text(" over")
-            }
-        } else if let end = state.currentEnd, end > Date.now {
-            HStack(spacing: 3) {
-                Text(timerInterval: Date.now...end, countsDown: true)
-                    .monospacedDigit()
-                    .frame(maxWidth: 52, alignment: .leading)
-                Text("left")
-            }
-        } else if let next = state.nextStart, next > Date.now {
-            HStack(spacing: 3) {
-                Text(timerInterval: Date.now...next, countsDown: true)
-                    .monospacedDigit()
-                    .frame(maxWidth: 52, alignment: .leading)
-                Text("until \(state.nextTitle ?? "next")")
-                    .lineLimit(1)
+        Group {
+            if let over = state.overSince {
+                HStack(spacing: 0) {
+                    Text("+")
+                    Text(timerInterval: over...over.addingTimeInterval(24 * 3600), countsDown: false)
+                        .frame(width: digits(Date.now.timeIntervalSince(over)), alignment: .leading)
+                    Text(" over")
+                }
+            } else if let end = state.currentEnd, end > Date.now {
+                HStack(spacing: 4) {
+                    Text(timerInterval: Date.now...end, countsDown: true)
+                        .frame(width: digits(end.timeIntervalSinceNow), alignment: .leading)
+                    Text("left")
+                }
+            } else if let next = state.nextStart, next > Date.now {
+                HStack(spacing: 4) {
+                    Text(timerInterval: Date.now...next, countsDown: true)
+                        .frame(width: digits(next.timeIntervalSinceNow), alignment: .leading)
+                    Text("until \(state.nextTitle ?? "next")")
+                        .lineLimit(1)
+                }
             }
         }
+        .font(.system(size: size, weight: .bold).monospacedDigit())
+        .lineLimit(1)
     }
 }
 
@@ -281,20 +290,20 @@ struct BlockActionButton: View {
     var body: some View {
         if let id = state.actionBlockID, let action = state.action {
             Button(intent: BlockActionIntent(blockID: id, action: action)) {
-                // Done and Step are yellow to pull your eye; "Start now" in free time stays grey.
-                let yellow = action != .startNext
+                // Done is always green, Step is yellow, "Start now" in free time stays grey.
+                let fill: Color = action == .done ? DayLiveStyle.doneGreen
+                    : action == .checkStep ? DayLiveStyle.stepYellow : Color.white.opacity(0.22)
+                let ink: Color = action == .checkStep ? .black : .white
                 HStack(spacing: 5) {
                     HDIcon(buttonSymbol(action), size: 15)
-                        .foregroundStyle(yellow ? Color(white: 0.3) : Color.white)
+                        .foregroundStyle(action == .checkStep ? Color(white: 0.3) : Color.white)
                     Text(buttonTitle(action))
-                        .foregroundStyle(yellow ? Color.black : Color.white)
+                        .foregroundStyle(ink)
                 }
-                    .font(.system(size: 14, weight: yellow ? .bold : .semibold))
+                    .font(.system(size: 14, weight: action == .startNext ? .semibold : .bold))
                     .padding(.horizontal, 14)
                     .frame(height: 36)
-                    .background(yellow ? AnyShapeStyle(DayLiveStyle.stepYellow)
-                                       : AnyShapeStyle(Color.white.opacity(0.22)),
-                                in: Capsule())
+                    .background(fill, in: Capsule())
             }
             .buttonStyle(.plain)
             .foregroundStyle(.white)
@@ -332,9 +341,7 @@ struct WatchCard: View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 5) {
                 AppMark(size: 14)
-                TimerLabel(state: state)
-                    .font(.system(size: 13, weight: .semibold))
-                    .lineLimit(1)
+                TimerLabel(state: state, size: 13)
                 Spacer(minLength: 2)
                 if let nextTime {
                     Text(nextTime)

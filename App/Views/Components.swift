@@ -48,7 +48,7 @@ enum Appearance: String, CaseIterable, Hashable {
 struct HeaderBar: View {
     let section: String
     @AppStorage("appearance") private var appearance = Appearance.system.rawValue
-    @Environment(\.colorScheme) private var scheme
+    private var current: Appearance { Appearance(rawValue: appearance) ?? .system }
 
     var body: some View {
         HStack(spacing: 10) {
@@ -62,16 +62,18 @@ struct HeaderBar: View {
                 .foregroundStyle(Theme.muted)
             Spacer()
             Button {
-                appearance = (scheme == .dark ? Appearance.light : Appearance.dark).rawValue
+                // System → Light → Dark → System
+                let now = Appearance(rawValue: appearance) ?? .system
+                appearance = (now == .system ? Appearance.light : now == .light ? .dark : .system).rawValue
             } label: {
-                HDIcon(scheme == .dark ? "sun" : "moon", size: 17)
+                HDIcon(current == .system ? "auto" : current == .light ? "sun" : "moon", size: 17)
                     .foregroundStyle(Theme.text)
                     .frame(width: 32, height: 32)
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 1))
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(scheme == .dark ? "Switch to light mode" : "Switch to dark mode")
+            .accessibilityLabel("Appearance: \(current.label). Tap to change.")
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
@@ -127,11 +129,12 @@ struct InfoRow: View {
 // MARK: - Buttons (Hire Me / Download CV)
 
 struct PrimaryButtonStyle: ButtonStyle {
+    var width: CGFloat? = nil   // nil = full width
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(Color.white)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: width ?? .infinity)
             .frame(height: 40)
             .background(RoundedRectangle(cornerRadius: 4).fill(Theme.blue))
             .opacity(configuration.isPressed ? 0.8 : 1)
@@ -139,11 +142,12 @@ struct PrimaryButtonStyle: ButtonStyle {
 }
 
 struct SecondaryButtonStyle: ButtonStyle {
+    var width: CGFloat? = nil   // nil = full width
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(Theme.text)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: width ?? .infinity)
             .frame(height: 40)
             .background(RoundedRectangle(cornerRadius: 4).fill(Theme.card))
             .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.border, lineWidth: 1))
@@ -437,7 +441,7 @@ struct SwipeRow<Content: View>: View {
                     }
                 }
                 .offset(x: offset)
-                .gesture(
+                .simultaneousGesture(
                     DragGesture(minimumDistance: 20)
                         .onChanged { v in
                             guard abs(v.translation.width) > abs(v.translation.height) else { return }

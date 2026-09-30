@@ -30,10 +30,8 @@ struct DayLiveActivityWidget: Widget {
                         .frame(maxHeight: .infinity, alignment: .center)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    TimerLabel(state: context.state)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(context.state.overSince != nil ? DayLiveStyle.stepYellow : context.state.accentColor)
-                        .lineLimit(1)
+                    TimerLabel(state: context.state, size: 18)
+                        .foregroundStyle(context.state.overSince != nil ? DayLiveStyle.stepYellow : .white)
                         .fixedSize()
                         .padding(.trailing, 6)
                         .frame(maxHeight: .infinity, alignment: .center)
