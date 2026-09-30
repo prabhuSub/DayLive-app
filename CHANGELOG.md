@@ -11,7 +11,14 @@
 - **Week view drag:** long-press to move a planned block (15-minute snap, across days), pull the bottom handle to resize.
 - **Weekly recap:** a Sunday 7 PM notification that opens a full-screen card you can share or save to Photos.
 
+- **Start timer:** tap Start (swipe right on a block, the editor, or "Start now" on the Lock Screen in free time) and the countdown runs from that moment for the block's length, then shows **+overtime** until Done.
+- **Free time:** one bar that fills up until your next block, with "1:40:05 until Standup".
+- **Date before time** when adding or editing (Today / Tomorrow / Pick date), and **Move to tomorrow** (editor or swipe left).
+- **Multiple categories per block.** The first one sets the color; Stats split the time evenly.
+
 ### Changed
+- Done and Step buttons are always yellow.
+- Only one Hyperday Live Activity at a time; older cards are cleared.
 - Minimum iOS is now **18**.
 - `deploy.sh` signs with an App Group and falls back without it on a free Apple ID.
 
