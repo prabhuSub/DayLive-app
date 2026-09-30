@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 import SwiftUI
+import WidgetKit
 
 /// One block as it actually happened on a given day.
 struct HistoryEntry: Codable, Hashable, Identifiable {
@@ -78,7 +79,10 @@ final class HistoryStore: ObservableObject {
         return dir.appendingPathComponent("daylive-history.json")
     }()
 
-    private init() { load() }
+    private init() {
+        load()
+        publishHeat()
+    }
 
     static func key(_ date: Date) -> String {
         let c = Calendar.current.dateComponents([.year, .month, .day], from: date)
@@ -113,6 +117,29 @@ final class HistoryStore: ObservableObject {
         guard days[key] != record else { return }
         days[key] = record
         save()
+    }
+
+    // MARK: Heatmap
+
+    /// Blocks done per day (Done tapped, or every step checked).
+    var heat: HeatData {
+        HeatData(counts: days.mapValues { rec in rec.entries.filter(\.done).count }.filter { $0.value > 0 })
+    }
+
+    func entries(on day: Date) -> [HistoryEntry] {
+        (days[Self.key(day)]?.entries ?? []).sorted { $0.start < $1.start }
+    }
+
+    private var lastHeatCounts: [String: Int]?
+
+    /// Hand the counts to the heatmap widgets when they change.
+    private func publishHeat() {
+        let h = heat
+        guard h.counts != lastHeatCounts else { return }
+        lastHeatCounts = h.counts
+        if WidgetShared.saveHeat(h) {
+            WidgetCenter.shared.reloadTimelines(ofKind: WidgetShared.heatKind)
+        }
     }
 
     // MARK: Stats
@@ -195,6 +222,7 @@ final class HistoryStore: ObservableObject {
         let list = days.values.sorted { $0.day < $1.day }
         guard let data = try? JSONEncoder().encode(list) else { return }
         try? data.write(to: fileURL, options: .atomic)
+        publishHeat()
     }
 }
 

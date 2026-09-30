@@ -122,6 +122,7 @@ Break any block into small steps. While that block is live, each step is one seg
 - **Widgets:** small, medium and large on the Home Screen, and the small one in StandBy.
 - **Lock Screen widgets:** **Now** (current block, time left, step bar, next step), **Day strip** (your whole day with a marker at now), and **Circles** you can set to time left, steps done, next start or blocks left.
 - **Apple Watch:** while a block is live, it shows up in the Smart Stack with the time left and a Step / Done button. No separate Watch app needed.
+- **Blocks-done heatmap:** a GitHub-style grid of what you finished each day, on Stats and as Home Screen and Lock Screen widgets.
 - **Siri & Shortcuts:** "What's next in Hyperday", "Start my day in Hyperday", "I'm done in Hyperday", "Add a block in Hyperday" and **Start Deep Work**.
 - **Focus:** add a Hyperday filter to a Focus (Settings › Focus › Work › Add Filter) to see only work, only personal, or nothing.
 - **Dynamic Island:** your countdown and progress while you use other apps.

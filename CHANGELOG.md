@@ -16,8 +16,13 @@
 - **Date before time** when adding or editing (Today / Tomorrow / Pick date), and **Move to tomorrow** (editor or swipe left).
 - **Multiple categories per block.** The first one sets the color; Stats split the time evenly.
 
+- **Blocks-done heatmap** (GitHub-style): first card on Stats (12 months, tap a day for its blocks, Open in Calendar), plus widgets: Small (7 weeks), Medium (5 months), Large (12 months), Lock Screen (16 weeks).
+- **App icon: Now Line**, and Hyperday's own line icons across the app. Categories can pick an icon.
+
 ### Changed
-- Done and Step buttons are always yellow.
+- Done is green, Step is yellow, Start now grey.
+- Calendar tab always opens on today; the agenda is one continuous list (90 days back and ahead). Tasks are kept for 2 years.
+- Appearance follows the system by default; the header button cycles System, Light, Dark.
 - Only one Hyperday Live Activity at a time; older cards are cleared.
 - Minimum iOS is now **18**.
 - `deploy.sh` signs with an App Group and falls back without it on a free Apple ID.

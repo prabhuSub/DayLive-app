@@ -390,6 +390,9 @@ struct RootView: View {
         }
         .tint(Theme.text)
         .modifier(MinimizeTabBarOnScroll())
+        .onReceive(NotificationCenter.default.publisher(for: CalendarJump.notification)) { _ in
+            tab = .calendar
+        }
     }
 }
 

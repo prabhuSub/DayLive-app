@@ -53,6 +53,24 @@ enum WidgetShared {
     static let nowKind = "HyperdayLockNow"
     static let dayKind = "HyperdayLockDay"
     static let circleKind = "HyperdayLockCircle"
+    static let heatKind = "HyperdayHeat"
+
+    static var heatURL: URL? {
+        FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: appGroup)?
+            .appendingPathComponent("widget-heat.json")
+    }
+
+    @discardableResult
+    static func saveHeat(_ heat: HeatData) -> Bool {
+        guard let url = heatURL, let data = try? JSONEncoder().encode(heat) else { return false }
+        return (try? data.write(to: url, options: .atomic)) != nil
+    }
+
+    static func loadHeat() -> HeatData? {
+        guard let url = heatURL, let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(HeatData.self, from: data)
+    }
 
     /// nil when the App Group isn't available (e.g. a free Apple ID).
     static var fileURL: URL? {

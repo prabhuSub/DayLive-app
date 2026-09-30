@@ -51,6 +51,7 @@ targets:
       - Shared/LiveActivityViews.swift
       - Shared/WidgetData.swift
       - Shared/HDIcon.swift
+      - Shared/Heatmap.swift
     info:
       path: Widget/Info.plist
       properties:

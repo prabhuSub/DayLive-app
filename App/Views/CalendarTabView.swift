@@ -88,7 +88,12 @@ struct CalendarTabView: View {
                 }
             }
             // Always open on today; go back from there with ‹ or by tapping a date.
-            .onAppear { tapDay(cal.startOfDay(for: .now), fromTodayButton: true) }
+            .onAppear {
+                // Opens on today, unless the heatmap asked for a specific day.
+                tapDay(CalendarJump.pending ?? cal.startOfDay(for: .now), fromTodayButton: true)
+                CalendarJump.pending = nil
+            }
+
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                 tapDay(cal.startOfDay(for: .now), fromTodayButton: true)
             }
