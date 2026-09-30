@@ -109,6 +109,12 @@ final class CategoryStore: ObservableObject {
         return ruleCategory(title: block.title, calendarName: block.calendarName)
     }
 
+    /// Every category of a block: the manual picks (first sets the color), or the one the rules give.
+    func categories(for block: Block) -> [Category] {
+        let picked = BlockStore.shared.manualCategoryIDs(for: block.id).compactMap { category(id: $0) }
+        return picked.isEmpty ? [category(for: block)] : picked
+    }
+
     // MARK: Calendar colors
 
     /// The color set for a calendar in Hyperday. Tesla calendars default to Tesla red.

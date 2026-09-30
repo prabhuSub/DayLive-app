@@ -321,6 +321,13 @@ struct BlockRow: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 6)
+            if block.source == .calendar && !isNow {
+                // Calendar events are read-only in Hyperday (can't be moved or deleted here).
+                Image(systemName: "calendar")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.faint)
+                    .accessibilityLabel("Calendar event")
+            }
             if isNow {
                 Text("NOW")
                     .font(.system(size: 10, weight: .bold))
@@ -382,5 +389,87 @@ private struct MinimizeTabBarOnScroll: ViewModifier {
         } else {
             content
         }
+    }
+}
+
+
+// MARK: - Swipe row (Today list lives in a ScrollView, where .swipeActions isn't available)
+
+struct SwipeAction: Identifiable {
+    let id = UUID()
+    let title: String
+    let icon: String
+    let color: Color
+    let action: () -> Void
+}
+
+struct SwipeRow<Content: View>: View {
+    var leading: [SwipeAction] = []
+    var trailing: [SwipeAction] = []
+    @ViewBuilder var content: () -> Content
+
+    @State private var offset: CGFloat = 0
+    @State private var startOffset: CGFloat = 0
+    private let width: CGFloat = 80
+
+    private var maxLeft: CGFloat { CGFloat(leading.count) * width }
+    private var maxRight: CGFloat { CGFloat(trailing.count) * width }
+
+    var body: some View {
+        ZStack {
+            HStack(spacing: 0) {
+                ForEach(leading) { button($0) }
+                Spacer(minLength: 0)
+                ForEach(trailing) { button($0) }
+            }
+            content()
+                .background(Theme.card)
+                .overlay {
+                    if offset != 0 {
+                        Color.clear.contentShape(Rectangle()).onTapGesture { close() }
+                    }
+                }
+                .offset(x: offset)
+                .gesture(
+                    DragGesture(minimumDistance: 20)
+                        .onChanged { v in
+                            guard abs(v.translation.width) > abs(v.translation.height) else { return }
+                            offset = min(max(startOffset + v.translation.width, -maxRight), maxLeft)
+                        }
+                        .onEnded { v in
+                            let target = startOffset + v.predictedEndTranslation.width
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                                if target < -width / 2 && maxRight > 0 { offset = -maxRight }
+                                else if target > width / 2 && maxLeft > 0 { offset = maxLeft }
+                                else { offset = 0 }
+                            }
+                            startOffset = offset
+                        }
+                )
+        }
+        .clipped()
+    }
+
+    private func button(_ a: SwipeAction) -> some View {
+        Button {
+            close()
+            a.action()
+        } label: {
+            VStack(spacing: 4) {
+                Image(systemName: a.icon).font(.system(size: 17, weight: .medium))
+                Text(a.title).font(.system(size: 11, weight: .semibold))
+            }
+            .foregroundStyle(.white)
+            .frame(width: width)
+            .frame(maxHeight: .infinity)
+            .background(a.color)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(a.title)
+    }
+
+    private func close() {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { offset = 0 }
+        startOffset = 0
     }
 }

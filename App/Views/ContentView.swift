@@ -58,7 +58,7 @@ struct TodayView: View {
             BlockEditorSheet(
                 block: block,
                 steps: store.steps(for: block.id),
-                categoryOverride: store.categoryOverrides[block.id]
+                categoryIDs: store.manualCategoryIDs(for: block.id)
             ) {
                 store.delete(id: block.id)
                 Task { await activity.refresh() }
@@ -79,7 +79,10 @@ struct TodayView: View {
     private func hero(snap: DaySnapshot) -> some View {
         let title: String
         let subtitle: String
-        if let c = snap.current {
+        if let c = snap.current, snap.overtime {
+            title = c.title
+            subtitle = "Over time since \(c.end.shortTime) · tap Done on the Lock Screen"
+        } else if let c = snap.current {
             title = c.title
             subtitle = "\(c.source == .calendar ? (c.calendarName ?? "Calendar") : "My plan") · until \(c.end.shortTime)"
         } else if let n = snap.next {
@@ -130,11 +133,11 @@ struct TodayView: View {
         var focused: TimeInterval = 0
         var stepsDone = 0, stepsTotal = 0, meetingsLeft = 0
         for b in snap.all {
-            let cat = categories.category(for: b).id
-            if cat == "work" || cat == "deepwork" {
-                focused += max(0, min(b.end, now).timeIntervalSince(b.start))
-            }
-            if cat == "meetings" && b.end > now { meetingsLeft += 1 }
+            let cats = categories.categories(for: b).map(\.id)
+            let share = 1 / Double(max(cats.count, 1))
+            let focusCount = cats.filter { $0 == "work" || $0 == "deepwork" }.count
+            focused += max(0, min(b.end, now).timeIntervalSince(b.start)) * share * Double(focusCount)
+            if cats.contains("meetings") && b.end > now { meetingsLeft += 1 }
             let st = store.steps(for: b.id)
             stepsDone += st.filter(\.done).count
             stepsTotal += st.count
@@ -160,7 +163,8 @@ struct TodayView: View {
                 }
                 VStack(alignment: .leading, spacing: 0) {
                     Caps("Live now", color: color)
-                    Text("\(c.end.timeIntervalSince(now).hoursMinutes) left")
+                    Text(snap.overtime ? "\(now.timeIntervalSince(c.end).hoursMinutes) over"
+                                       : "\(c.end.timeIntervalSince(now).hoursMinutes) left")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(Theme.text)
                 }
@@ -190,17 +194,43 @@ struct TodayView: View {
             }
             ForEach(Array(snap.all.enumerated()), id: \.element.id) { index, block in
                 if index > 0 { Rectangle().fill(Theme.border).frame(height: 1) }
-                Button {
-                    editing = block
-                } label: {
-                    BlockRow(block: block, now: now,
-                             color: categories.displayColor(for: block),
-                             steps: store.steps(for: block.id))
+                SwipeRow(leading: leadingActions(block), trailing: trailingActions(block)) {
+                    Button {
+                        editing = block
+                    } label: {
+                        BlockRow(block: block, now: now,
+                                 color: categories.displayColor(for: block),
+                                 steps: store.steps(for: block.id))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
         }
         .cardBox(padding: 0)
+    }
+
+    /// Swipe right: Start (timer from now). Any block that hasn't ended.
+    private func leadingActions(_ block: Block) -> [SwipeAction] {
+        guard block.end > now else { return [] }
+        return [SwipeAction(title: "Start", icon: "play.fill", color: DayLiveStyle.planGreen) {
+            store.start(blockID: block.id, at: .now)
+            Task { await activity.refresh() }
+        }]
+    }
+
+    /// Swipe left: Tomorrow + Delete. Only blocks you planned; calendar events stay read-only.
+    private func trailingActions(_ block: Block) -> [SwipeAction] {
+        guard block.source == .plan else { return [] }
+        return [
+            SwipeAction(title: "Tomorrow", icon: "calendar.badge.clock", color: Theme.blue) {
+                store.move(id: block.id, byDays: 1)
+                Task { await activity.refresh() }
+            },
+            SwipeAction(title: "Delete", icon: "trash", color: Theme.red) {
+                store.delete(id: block.id)
+                Task { await activity.refresh() }
+            },
+        ]
     }
 
     private var calendarBanner: some View {

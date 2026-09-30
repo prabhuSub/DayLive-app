@@ -51,21 +51,16 @@ struct LockScreenCard: View {
             // Top row (like Tesla's card): [app icon] 26:10 left ······ Next: Standup 10:30 PM
             HStack(spacing: 7) {
                 AppMark(size: 20)
-                if let end = state.currentEnd, end > Date.now {
-                    HStack(spacing: 3) {
-                        Text(timerInterval: Date.now...end, countsDown: true)
-                            .monospacedDigit()
-                            .frame(maxWidth: 52, alignment: .leading)
-                        Text("left")
-                    }
+                TimerLabel(state: state)
                     .font(.system(size: 14, weight: .semibold))
                     .fixedSize()
-                }
                 Spacer(minLength: 6)
-                Text(nextText)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.72))
-                    .lineLimit(1)
+                if state.nextStart == nil || isStale {
+                    Text(nextText)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.72))
+                        .lineLimit(1)
+                }
             }
 
             HStack(alignment: .top, spacing: 12) {
@@ -97,8 +92,8 @@ struct LockScreenCard: View {
             .padding(.top, 2)
 
             HStack(spacing: 12) {
-                SegmentBar(segments: state.segments, accent: state.accentColor, height: 6)
-                BlockActionButton(state: state)   // Step n/N is always yellow, never the category color
+                DayBar(state: state, height: 6)
+                BlockActionButton(state: state)   // Done / Step n/N are always yellow, never the category color
             }
             .padding(.top, 6)
         }
@@ -224,23 +219,81 @@ struct TimeLeft: View {
     }
 }
 
+/// "1:26:10 left" · "+4:12 over" · "1:40:05 until Standup". Ticks on its own on the Lock Screen.
+struct TimerLabel: View {
+    let state: DayActivityAttributes.ContentState
+
+    var body: some View {
+        if let over = state.overSince {
+            HStack(spacing: 0) {
+                Text("+")
+                Text(timerInterval: over...over.addingTimeInterval(24 * 3600), countsDown: false)
+                    .monospacedDigit()
+                    .frame(maxWidth: 52, alignment: .leading)
+                Text(" over")
+            }
+        } else if let end = state.currentEnd, end > Date.now {
+            HStack(spacing: 3) {
+                Text(timerInterval: Date.now...end, countsDown: true)
+                    .monospacedDigit()
+                    .frame(maxWidth: 52, alignment: .leading)
+                Text("left")
+            }
+        } else if let next = state.nextStart, next > Date.now {
+            HStack(spacing: 3) {
+                Text(timerInterval: Date.now...next, countsDown: true)
+                    .monospacedDigit()
+                    .frame(maxWidth: 52, alignment: .leading)
+                Text("until \(state.nextTitle ?? "next")")
+                    .lineLimit(1)
+            }
+        }
+    }
+}
+
+/// The bar under the title: steps or day segments while a block is on, one filling bar in free time,
+/// a full yellow bar in overtime.
+struct DayBar: View {
+    let state: DayActivityAttributes.ContentState
+    var height: CGFloat = 6
+
+    var body: some View {
+        if state.overSince != nil {
+            Capsule().fill(DayLiveStyle.stepYellow).frame(height: height).frame(maxWidth: .infinity)
+        } else if let from = state.freeStart, let to = state.nextStart, from < to {
+            ProgressView(timerInterval: from...to, countsDown: false) {
+                EmptyView()
+            } currentValueLabel: {
+                EmptyView()
+            }
+            .progressViewStyle(.linear)
+            .tint(.white)
+            .frame(maxWidth: .infinity)
+        } else {
+            SegmentBar(segments: state.segments, accent: state.accentColor, height: height)
+        }
+    }
+}
+
 struct BlockActionButton: View {
     let state: DayActivityAttributes.ContentState
 
     var body: some View {
         if let id = state.actionBlockID, let action = state.action {
             Button(intent: BlockActionIntent(blockID: id, action: action)) {
+                // Done and Step are yellow to pull your eye; "Start now" in free time stays grey.
+                let yellow = action != .startNext
                 HStack(spacing: 5) {
                     Image(systemName: buttonSymbol(action))
-                        .foregroundStyle(action == .checkStep ? Color(white: 0.3) : Color.white)
+                        .foregroundStyle(yellow ? Color(white: 0.3) : Color.white)
                     Text(buttonTitle(action))
-                        .foregroundStyle(action == .checkStep ? Color.black : Color.white)
+                        .foregroundStyle(yellow ? Color.black : Color.white)
                 }
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 14, weight: yellow ? .bold : .semibold))
                     .padding(.horizontal, 14)
                     .frame(height: 36)
-                    .background(action == .checkStep ? AnyShapeStyle(DayLiveStyle.stepYellow)
-                                                     : AnyShapeStyle(Color.white.opacity(0.22)),
+                    .background(yellow ? AnyShapeStyle(DayLiveStyle.stepYellow)
+                                       : AnyShapeStyle(Color.white.opacity(0.22)),
                                 in: Capsule())
             }
             .buttonStyle(.plain)
@@ -251,7 +304,7 @@ struct BlockActionButton: View {
     private func buttonTitle(_ action: BlockAction) -> String {
         switch action {
         case .done:      return "Done"
-        case .startNext: return "Start next"
+        case .startNext: return "Start now"
         case .checkStep: return "Step \((state.stepsDone ?? 0) + 1)/\(state.stepsTotal ?? 0)"
         }
     }
@@ -259,7 +312,7 @@ struct BlockActionButton: View {
     private func buttonSymbol(_ action: BlockAction) -> String {
         switch action {
         case .done:      return "checkmark"
-        case .startNext: return "forward.fill"
+        case .startNext: return "play.fill"
         case .checkStep: return "checkmark.circle"
         }
     }
@@ -279,12 +332,9 @@ struct WatchCard: View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 5) {
                 AppMark(size: 14)
-                if let end = state.currentEnd, end > Date.now {
-                    Text(timerInterval: Date.now...end, countsDown: true)
-                        .monospacedDigit()
-                        .font(.system(size: 13, weight: .semibold))
-                        .frame(maxWidth: 46, alignment: .leading)
-                }
+                TimerLabel(state: state)
+                    .font(.system(size: 13, weight: .semibold))
+                    .lineLimit(1)
                 Spacer(minLength: 2)
                 if let nextTime {
                     Text(nextTime)
@@ -297,7 +347,7 @@ struct WatchCard: View {
                 .font(.system(size: 16, weight: .bold))
                 .lineLimit(1)
             HStack(spacing: 6) {
-                SegmentBar(segments: state.segments, accent: state.accentColor, height: 4)
+                DayBar(state: state, height: 4)
                 BlockActionButton(state: state)
                     .scaleEffect(0.85)
             }

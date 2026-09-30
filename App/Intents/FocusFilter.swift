@@ -61,6 +61,6 @@ enum FocusFilterState {
     @MainActor
     static func allows(_ block: Block) -> Bool {
         guard let ids = current.categoryIDs else { return true }
-        return ids.contains(CategoryStore.shared.category(for: block).id)
+        return CategoryStore.shared.categories(for: block).contains { ids.contains($0.id) }
     }
 }

@@ -47,7 +47,7 @@ struct DayLiveActivityWidget: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack(spacing: 12) {
-                        SegmentBar(segments: context.state.segments, accent: context.state.accentColor)
+                        DayBar(state: context.state)
                         BlockActionButton(state: context.state)
                     }
                     .padding(.horizontal, 4)

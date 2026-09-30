@@ -13,12 +13,15 @@ final class BlockStore: ObservableObject {
     @Published private(set) var steps: [String: [Step]] = [:]
     /// Manual category per block id; beats the auto rules.
     @Published private(set) var categoryOverrides: [String: String] = [:]
+    /// Extra categories after the first (the first one, in categoryOverrides, sets the color).
+    @Published private(set) var extraCategories: [String: [String]] = [:]
 
     private struct Snapshot: Codable {
         var planBlocks: [Block]
         var overrides: [String: BlockOverride]
         var steps: [String: [Step]]?   // optional so files saved before steps existed still load
         var categoryOverrides: [String: String]?
+        var extraCategories: [String: [String]]?
     }
 
     private let fileURL: URL = {
@@ -34,7 +37,7 @@ final class BlockStore: ObservableObject {
     // MARK: Plan blocks
 
     @discardableResult
-    func add(title: String, start: Date, minutes: Int, categoryID: String? = nil) -> String? {
+    func add(title: String, start: Date, minutes: Int, categoryID: String? = nil, categoryIDs: [String] = []) -> String? {
         let clean = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty, minutes > 0 else { return nil }
         let block = Block(
@@ -47,6 +50,7 @@ final class BlockStore: ObservableObject {
         planBlocks.append(block)
         planBlocks.sort { $0.start < $1.start }
         if let categoryID { categoryOverrides[block.id] = categoryID }
+        if !categoryIDs.isEmpty { applyCategories(categoryIDs, for: block.id) }
         save()
         return block.id
     }
@@ -56,12 +60,44 @@ final class BlockStore: ObservableObject {
         overrides[id] = nil
         steps[id] = nil
         categoryOverrides[id] = nil
+        extraCategories[id] = nil
         save()
     }
 
     /// nil = back to automatic (rules).
     func setCategory(_ categoryID: String?, for blockID: String) {
         categoryOverrides[blockID] = categoryID
+        extraCategories[blockID] = nil
+        save()
+    }
+
+    /// Manual categories in the order picked (first sets the color). Empty = automatic.
+    func manualCategoryIDs(for blockID: String) -> [String] {
+        guard let first = categoryOverrides[blockID] else { return [] }
+        return [first] + (extraCategories[blockID] ?? [])
+    }
+
+    func setCategories(_ ids: [String], for blockID: String) {
+        applyCategories(ids, for: blockID)
+        save()
+    }
+
+    private func applyCategories(_ ids: [String], for blockID: String) {
+        var seen = Set<String>()
+        let unique = ids.filter { seen.insert($0).inserted }
+        categoryOverrides[blockID] = unique.first
+        extraCategories[blockID] = unique.count > 1 ? Array(unique.dropFirst()) : nil
+    }
+
+    /// Move a planned block to the same time on another day (default: the next day). Steps and categories come along.
+    func move(id: String, byDays days: Int = 1) {
+        guard let i = planBlocks.firstIndex(where: { $0.id == id }),
+              let s = Calendar.current.date(byAdding: .day, value: days, to: planBlocks[i].start),
+              let e = Calendar.current.date(byAdding: .day, value: days, to: planBlocks[i].end) else { return }
+        planBlocks[i].start = s
+        planBlocks[i].end = e
+        planBlocks.sort { $0.start < $1.start }
+        overrides[id] = nil
         save()
     }
 
@@ -83,6 +119,7 @@ final class BlockStore: ObservableObject {
         planBlocks.removeAll { $0.id.hasPrefix(Self.demoPrefix) }
         steps = steps.filter { !$0.key.hasPrefix(Self.demoPrefix) }
         categoryOverrides = categoryOverrides.filter { !$0.key.hasPrefix(Self.demoPrefix) }
+        extraCategories = extraCategories.filter { !$0.key.hasPrefix(Self.demoPrefix) }
         overrides = overrides.filter { !$0.key.hasPrefix(Self.demoPrefix) }
         save()
     }
@@ -140,10 +177,9 @@ final class BlockStore: ObservableObject {
         save()
     }
 
-    func startEarly(blockID: String, at date: Date) {
-        var o = overrides[blockID] ?? BlockOverride()
-        o.start = date
-        overrides[blockID] = o
+    /// Start button: the timer runs from now for the block's planned length, then shows overtime until Done.
+    func start(blockID: String, at date: Date) {
+        overrides[blockID] = BlockOverride(start: date, end: nil, started: true)
         save()
     }
 
@@ -165,6 +201,9 @@ final class BlockStore: ObservableObject {
         categoryOverrides = categoryOverrides.filter { key, _ in
             key.hasPrefix("plan-") ? liveIDs.contains(key) : true
         }
+        extraCategories = extraCategories.filter { key, _ in
+            key.hasPrefix("plan-") ? liveIDs.contains(key) : true
+        }
         if overrides.count > 300 { overrides = [:] }   // crude cap for v1
         if planBlocks.count != before || overrides.count != overridesBefore { save() }
     }
@@ -176,10 +215,12 @@ final class BlockStore: ObservableObject {
         overrides = snap.overrides
         steps = snap.steps ?? [:]
         categoryOverrides = snap.categoryOverrides ?? [:]
+        extraCategories = snap.extraCategories ?? [:]
     }
 
     private func save() {
-        let snap = Snapshot(planBlocks: planBlocks, overrides: overrides, steps: steps, categoryOverrides: categoryOverrides)
+        let snap = Snapshot(planBlocks: planBlocks, overrides: overrides, steps: steps,
+                            categoryOverrides: categoryOverrides, extraCategories: extraCategories)
         guard let data = try? JSONEncoder().encode(snap) else { return }
         try? data.write(to: fileURL, options: .atomic)
     }

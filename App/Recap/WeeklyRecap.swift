@@ -27,14 +27,14 @@ extension HistoryStore {
         let focusIDs: Set<String> = ["work", "deepwork"]
 
         func entries(_ ds: [Date]) -> [HistoryEntry] { ds.compactMap { days[Self.key($0)] }.flatMap(\.entries) }
-        func focused(_ es: [HistoryEntry]) -> Double { es.filter { focusIDs.contains($0.categoryID) }.reduce(0) { $0 + $1.hours } }
+        func focused(_ es: [HistoryEntry]) -> Double { es.reduce(0) { $0 + $1.hours(in: focusIDs) } }
 
         let week = entries(dates)
         let before = entries(prior)
         let total = week.reduce(0) { $0 + $1.hours }
 
         var byID: [String: Double] = [:]
-        for e in week { byID[e.categoryID, default: 0] += e.hours }
+        for e in week { for s in e.shares { byID[s.id, default: 0] += s.hours } }
         let byCategory = CategoryStore.shared.categories
             .map { CategoryHours(id: $0.id, name: $0.name, color: $0.color, hours: byID[$0.id] ?? 0) }
             .filter { $0.hours > 0.05 }

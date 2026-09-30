@@ -14,8 +14,16 @@ struct HistoryEntry: Codable, Hashable, Identifiable {
     var stepsDone: Int
     var stepsTotal: Int
     var done: Bool            // tapped Done, or every step checked
+    var extraCategoryIDs: [String]? = nil   // more categories; time is split evenly
 
     var hours: Double { max(0, actualEnd.timeIntervalSince(start)) / 3600 }
+    var categoryIDs: [String] { [categoryID] + (extraCategoryIDs ?? []) }
+    /// Hours per category, split evenly when a block has several.
+    var shares: [(id: String, hours: Double)] {
+        let ids = categoryIDs
+        return ids.map { ($0, hours / Double(ids.count)) }
+    }
+    func hours(in ids: Set<String>) -> Double { shares.filter { ids.contains($0.id) }.reduce(0) { $0 + $1.hours } }
     var endedEarly: Bool { done && actualEnd < plannedEnd.addingTimeInterval(-60) }
 }
 
@@ -91,11 +99,13 @@ final class HistoryStore: ObservableObject {
             let start = min(b.start, o?.start ?? b.start)
             let end = min(b.end, o?.end ?? b.end, now)
             let allSteps = !st.isEmpty && st.allSatisfy(\.done)
+            let cats = cs.categories(for: b).map(\.id)
             return HistoryEntry(
-                id: b.id, title: b.title, categoryID: cs.category(for: b).id, source: b.source,
+                id: b.id, title: b.title, categoryID: cats.first ?? cs.category(for: b).id, source: b.source,
                 start: start, plannedEnd: b.end, actualEnd: max(start, end),
                 stepsDone: st.filter(\.done).count, stepsTotal: st.count,
-                done: o?.end != nil || allSteps
+                done: o?.end != nil || allSteps,
+                extraCategoryIDs: cats.count > 1 ? Array(cats.dropFirst()) : nil
             )
         }
         let key = Self.key(now)
@@ -115,7 +125,7 @@ final class HistoryStore: ObservableObject {
 
         let categories = CategoryStore.shared.categories
         var byID: [String: Double] = [:]
-        for e in entries { byID[e.categoryID, default: 0] += e.hours }
+        for e in entries { for s in e.shares { byID[s.id, default: 0] += s.hours } }
         let byCategory = categories
             .map { CategoryHours(id: $0.id, name: $0.name, color: $0.color, hours: byID[$0.id] ?? 0) }
             .filter { $0.hours > 0.05 }
@@ -134,11 +144,11 @@ final class HistoryStore: ObservableObject {
         return StatsSummary(
             title: title,
             subtitle: "\(fmt(startDay)) – \(fmt(today))",
-            focusedHours: entries.filter { ["work", "deepwork"].contains($0.categoryID) }.reduce(0) { $0 + $1.hours },
+            focusedHours: entries.reduce(0) { $0 + $1.hours(in: ["work", "deepwork"]) },
             stepsDone: entries.reduce(0) { $0 + $1.stepsDone },
             streak: streak(now: now),
             byCategory: byCategory,
-            meetingHours: entries.filter { $0.categoryID == "meetings" }.reduce(0) { $0 + $1.hours },
+            meetingHours: entries.reduce(0) { $0 + $1.hours(in: ["meetings"]) },
             planHours: plans.reduce(0) { $0 + $1.hours },
             blocksDone: entries.filter(\.done).count,
             endedEarly: entries.filter(\.endedEarly).count,

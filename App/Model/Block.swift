@@ -26,6 +26,9 @@ struct Step: Identifiable, Codable, Hashable {
 struct BlockOverride: Codable, Hashable {
     var start: Date?
     var end: Date?
+    /// Tapped Start: the block runs from `start` for its planned length (can be later than planned),
+    /// and keeps going as overtime until Done.
+    var started: Bool? = nil
 }
 
 extension Date {

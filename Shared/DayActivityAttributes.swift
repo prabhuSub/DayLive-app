@@ -32,6 +32,10 @@ struct DayActivityAttributes: ActivityAttributes {
         var stepsTotal: Int?
         var accentHex: String?       // live block's category color, e.g. "#30D158"
         var alsoIsStep: Bool?        // true when the second line is the next step (drawn as a grey pill)
+        var freeStart: Date?         // free time: when the gap began (bar fills from here…
+        var nextStart: Date?         // …to here, the next block's start)
+        var nextTitle: String?       // free time: "Standup"
+        var overSince: Date?         // started block past its planned end: counts up from here
     }
 
     var dayStart: Date

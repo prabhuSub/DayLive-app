@@ -90,7 +90,7 @@ struct CalendarTabView: View {
             BlockEditorSheet(
                 block: block,
                 steps: store.steps(for: block.id),
-                categoryOverride: store.categoryOverrides[block.id]
+                categoryIDs: store.manualCategoryIDs(for: block.id)
             ) {
                 store.delete(id: block.id)
                 Task { await LiveActivityManager.shared.refresh() }
