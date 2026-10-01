@@ -688,11 +688,14 @@ struct IslandTimer: View {
         .font(.system(size: 15, weight: .semibold).monospacedDigit())
     }
 
+    /// Minutes:seconds only (1:18:20 shows as 78:20), so the Island stays as narrow as Apple's own timers.
+    /// The box is sized with a hidden "88:88" (or "888:88" past 100 minutes) so it never jumps.
     private func sized(_ range: ClosedRange<Date>, down: Bool) -> some View {
-        let long = range.upperBound.timeIntervalSince(range.lowerBound) >= 3600 || !down
-        return Text(long ? "8:88:88" : "88:88").hidden()
+        let span = range.upperBound.timeIntervalSince(range.lowerBound)
+        let sample = down && span >= 6000 ? "888:88" : "88:88"
+        return Text(sample).hidden()
             .overlay(alignment: .trailing) {
-                Text(timerInterval: range, countsDown: down)
+                Text(timerInterval: range, pauseTime: nil, countsDown: down, showsHours: false)
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
