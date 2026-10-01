@@ -27,6 +27,12 @@ final class ProfileStore: ObservableObject {
 
     var signedIn: Bool { userID != nil }
 
+    /// Set HyperdaySignInWithApple = YES in Info.plist (project.yml) after enrolling and adding the
+    /// com.apple.developer.applesignin entitlement; a free Apple ID can't sign it.
+    nonisolated static var signInAvailable: Bool {
+        (Bundle.main.object(forInfoDictionaryKey: "HyperdaySignInWithApple") as? Bool) ?? false
+    }
+
     var initials: String {
         let parts = (name ?? "").split(separator: " ")
         let s = parts.prefix(2).compactMap(\.first).map(String.init).joined()
@@ -155,9 +161,10 @@ struct ProfileSheet: View {
     private var signedOut: some View {
         VStack(spacing: 12) {
             ProfileAvatar(size: 72)
-            Text(profile.name ?? "Not signed in").font(.system(size: 20, weight: .bold)).foregroundStyle(Theme.text)
+            Text(profile.name ?? (ProfileStore.signInAvailable ? "Not signed in" : "Your profile")).font(.system(size: 20, weight: .bold)).foregroundStyle(Theme.text)
             Text("Sign in to put your name on Hyperday and get ready for iCloud sync across your devices.")
                 .font(.system(size: 13)).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
+            if ProfileStore.signInAvailable {
             SignInWithAppleButton(.signIn) { req in
                 req.requestedScopes = [.fullName, .email]
             } onCompletion: { result in
@@ -166,6 +173,10 @@ struct ProfileSheet: View {
             .signInWithAppleButtonStyle(scheme == .dark ? .white : .black)
             .frame(height: 46)
             .clipShape(RoundedRectangle(cornerRadius: 8))
+            } else {
+                Text("Sign in with Apple turns on once you join the Apple Developer Program.")
+                    .font(.system(size: 12)).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
+            }
             photoRow.padding(.top, 6)
         }
         .padding(.vertical, 8)
@@ -200,8 +211,9 @@ struct ProfileSheet: View {
             if profile.photo != nil {
                 Button("Remove") { profile.setPhoto(nil) }.font(.system(size: 14))
             }
+            let label = profile.photo == nil ? "Choose…" : "Change"
             PhotosPicker(selection: $pick, matching: .images) {
-                Text(profile.photo == nil ? "Choose…" : "Change").font(.system(size: 14))
+                Text(label).font(.system(size: 14))
             }
         }
         .padding(.vertical, 11)
