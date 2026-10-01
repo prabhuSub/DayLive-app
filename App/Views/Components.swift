@@ -619,9 +619,12 @@ struct AddFab: View {
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             if menu {
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-                    .overlay(Color.black.opacity(0.12))
+                ZStack {
+                    // Half the blur it had: the thinnest material at 50% strength, same light dim on top.
+                    Rectangle().fill(.ultraThinMaterial).opacity(0.5)
+                    Color.black.opacity(0.12)
+                }
+                    .contentShape(Rectangle())
                     .ignoresSafeArea()
                     .onTapGesture { close() }
                     .transition(.opacity)

@@ -37,6 +37,13 @@ struct TodayView: View {
                     heroButtons
                         .padding(.horizontal, 20)
                         .padding(.top, 12)
+                        // Fades and lifts with the card above; the round + covers adding once they're gone.
+                        .scrollTransition(.interactive, axis: .vertical) { view, phase in
+                            view
+                                .opacity(phase.value < 0 ? 1 + phase.value * 0.8 : 1)
+                                .offset(y: phase.value < 0 ? phase.value * -40 : 0)
+                                .scaleEffect(phase.value < 0 ? 1 + phase.value * 0.04 : 1, anchor: .top)
+                        }
 
                     VStack(alignment: .leading, spacing: 14) {
                         if !calendarGranted { calendarBanner }
