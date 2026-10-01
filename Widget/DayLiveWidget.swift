@@ -46,11 +46,15 @@ struct DayLiveActivityWidget: Widget {
                         HStack(alignment: .center, spacing: 12) {
                             VStack(alignment: .leading, spacing: 2) {
                                 CardTitle(state: context.state, size: 20)
-                                if let also = context.state.also {
-                                    Text(also)
-                                        .font(.system(size: 13))
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
+                                HStack(spacing: 6) {
+                                    if let also = context.state.also {
+                                        Text(also)
+                                            .font(.system(size: 13))
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(1)
+                                    }
+                                    Spacer(minLength: 4)
+                                    AdjustTimeButtons(state: context.state)
                                 }
                             }
                             Spacer(minLength: 0)
@@ -60,7 +64,6 @@ struct DayLiveActivityWidget: Widget {
                         }
                         HStack(spacing: 12) {
                             DayBar(state: context.state)
-                            AdjustTimeButtons(state: context.state)
                             BlockActionButton(state: context.state)
                         }
                     }

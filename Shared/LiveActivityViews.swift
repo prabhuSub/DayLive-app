@@ -108,7 +108,12 @@ struct LockScreenCard: View {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
                     CardTitle(state: state, size: 23)
-                    secondLine
+                    // v19 (option B): −15 / +15 share the second line; the bar row keeps its full width.
+                    HStack(spacing: 6) {
+                        secondLine
+                        Spacer(minLength: 4)
+                        AdjustTimeButtons(state: state)
+                    }
                 }
                 Spacer(minLength: 0)
                 SourceIcon(source: state.source, size: 44, tint: state.source == .free ? nil : state.accentColor, iconName: state.iconName)
@@ -117,7 +122,6 @@ struct LockScreenCard: View {
 
             HStack(spacing: 12) {
                 DayBar(state: state, height: 6)
-                AdjustTimeButtons(state: state)
                 BlockActionButton(state: state)   // Done / Step n/N are always yellow, never the category color
             }
             .padding(.top, 6)
@@ -375,7 +379,7 @@ struct BlockActionButton: View {
     }
 }
 
-/// v19: −15 / +15 beside Done. Only for your own planned block while it's running.
+/// v19: −15 / +15 on the second line. Only for your own planned block while it's running.
 struct AdjustTimeButtons: View {
     let state: DayActivityAttributes.ContentState
 
@@ -392,9 +396,9 @@ struct AdjustTimeButtons: View {
     private func button(_ id: String, _ m: Int, _ label: String) -> some View {
         Button(intent: AdjustTimeIntent(blockID: id, minutes: m)) {
             Text(label)
-                .font(.system(size: 14, weight: .bold).monospacedDigit())
+                .font(.system(size: 13, weight: .bold).monospacedDigit())
                 .foregroundStyle(.white)
-                .frame(width: 46, height: 36)
+                .frame(width: 42, height: 28)
                 .background(Color.white.opacity(0.16), in: Capsule())
         }
         .buttonStyle(.plain)
