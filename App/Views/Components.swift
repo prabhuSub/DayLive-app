@@ -581,6 +581,15 @@ struct TabRoot<Content: View>: View {
                 .navigationTitle(title)
                 .navigationBarTitleDisplayMode(.large)
                 .toolbar {
+                    // The HYPERDAY wordmark stays top-left, above the large title.
+                    ToolbarItem(placement: .topBarLeading) {
+                        Text("HYPERDAY")
+                            .font(.system(size: 14, weight: .heavy))
+                            .kerning(5)
+                            .foregroundStyle(Theme.text)
+                            .fixedSize()
+                            .accessibilityAddTraits(.isHeader)
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         ProfileButton { showProfile = true }
                     }
