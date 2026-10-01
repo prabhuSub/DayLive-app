@@ -46,6 +46,11 @@ struct DayActivityAttributes: ActivityAttributes {
         var leaveBy: Date?
         var bedBy: Date?
         var reviewCount: Int?        // unfinished blocks still to review (0 after "Close the day")
+        // Drive card (#9): while your car is connected.
+        var driving: Bool?
+        var driveSince: Date?
+        var arriveAt: Date?
+        var spareMinutes: Int?       // minutes before the next block starts (negative = late)
     }
 
     var dayStart: Date

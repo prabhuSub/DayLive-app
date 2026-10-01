@@ -16,6 +16,8 @@ struct DayLiveApp: App {
     init() {
         // Must be set before launch finishes so a tap on the Sunday recap opens it.
         UNUserNotificationCenter.current().delegate = RecapCenter.shared
+        // Reality line: keep watching saved places (iOS relaunches us on arrive/leave).
+        if !RealityStore.shared.places.isEmpty { LocationService.shared.monitor(RealityStore.shared.places) }
         // v6: appearance follows the system by default (the header button used to force light/dark).
         if !UserDefaults.standard.bool(forKey: "appearanceResetV6") {
             UserDefaults.standard.set(Appearance.system.rawValue, forKey: "appearance")
@@ -48,6 +50,7 @@ struct DayLiveApp: App {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 Task {
+                    await RealityStore.shared.refreshWorkouts()
                     await LiveActivityManager.shared.refresh()
                     await RecapCenter.shared.schedule()
                 }

@@ -393,6 +393,8 @@ struct ActivityFamilyCard: View {
     var body: some View {
         if state.closed == true {
             DayClosedCard(state: state, compact: family == .small)
+        } else if state.driving == true && family != .small {
+            DriveCard(state: state)
         } else {
             switch family {
             case .small: WatchCard(state: state, isStale: isStale)
@@ -497,5 +499,62 @@ struct DayClosedCard: View {
                 .minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: - Drive card (#9)
+
+struct DriveCard: View {
+    let state: DayActivityAttributes.ContentState
+
+    var body: some View {
+        let spare = state.spareMinutes
+        let late = (spare ?? 0) < 0
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 7) {
+                AppMark(size: 20)
+                if let a = state.arriveAt {
+                    Text("Arrive \(a.formatted(date: .omitted, time: .shortened))")
+                        .font(.system(size: 16, weight: .heavy))
+                } else {
+                    Text("Driving").font(.system(size: 16, weight: .heavy))
+                }
+                Spacer(minLength: 4)
+                if let since = state.driveSince {
+                    HStack(spacing: 3) {
+                        Text("Driving ·")
+                        Text(timerInterval: since...since.addingTimeInterval(6 * 3600), countsDown: false)
+                            .monospacedDigit()
+                            .frame(width: 48, alignment: .leading)
+                    }
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.72))
+                }
+            }
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(state.title).font(.system(size: 21, weight: .bold)).lineLimit(1)
+                    if let spare {
+                        Text(late ? "\(-spare) min late" : "\(spare) min to spare")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(late ? Color(red: 1, green: 0.27, blue: 0.23) : DayLiveStyle.doneGreen)
+                    }
+                }
+                Spacer(minLength: 0)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(DayLiveStyle.calendarBlue)
+                    .frame(width: 44, height: 44)
+                    .overlay(Image(systemName: "car.fill").font(.system(size: 20)).foregroundStyle(.white))
+            }
+            if let since = state.driveSince, let a = state.arriveAt, a > since {
+                ProgressView(timerInterval: since...a, countsDown: false) { EmptyView() } currentValueLabel: { EmptyView() }
+                    .progressViewStyle(.linear)
+                    .tint(DayLiveStyle.calendarBlue)
+                    .padding(.top, 4)
+            }
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }

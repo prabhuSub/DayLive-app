@@ -123,6 +123,29 @@ final class LiveActivityManager: ObservableObject {
         return s
     }
 
+    /// #9: while driving, show the arrival time and how it fits the next block.
+    private func driveState(from snap: DaySnapshot, since: Date, now: Date) async -> DayActivityAttributes.ContentState {
+        var s = snap.contentState()
+        let next = snap.next ?? snap.current
+        let office = DayCloseSettings.officeDays.contains(Calendar.current.component(.weekday, from: now))
+            ? RealityStore.shared.place("office") : nil
+        let arrive = await DriveETA.arrival(to: next?.location, orPlace: office)
+        s.driving = true
+        s.driveSince = since
+        s.arriveAt = arrive
+        if let next, let arrive {
+            s.spareMinutes = Int((next.start.timeIntervalSince(arrive) / 60).rounded())
+        }
+        s.title = next.map { "Next: \($0.title) \($0.start.shortTime)" } ?? "Driving"
+        s.also = nil
+        s.action = nil
+        s.actionBlockID = nil
+        s.freeStart = nil
+        s.nextStart = nil
+        s.overSince = nil
+        return s
+    }
+
     private func performRefresh() async {
         let now = Date.now
         let snap = snapshot(now: now)
@@ -134,7 +157,10 @@ final class LiveActivityManager: ObservableObject {
         // Wake up at the close time too, so the card switches to "Day closed" on time.
         let boundary = closed ? midnight
             : [snap.nextBoundary, DayCloseSettings.showOnLockScreen && closeAt > now ? closeAt : nil].compactMap { $0 }.min()
-        let state = closed ? closedState(from: snap, now: now) : snap.contentState()
+        var state = closed ? closedState(from: snap, now: now) : snap.contentState()
+        if !closed, let since = RealityStore.shared.driveStartedAt {
+            state = await driveState(from: snap, since: since, now: now)
+        }
         let content = ActivityContent(state: state, staleDate: boundary)
         let running = Self.liveActivities()
         let inForeground = UIApplication.shared.applicationState == .active

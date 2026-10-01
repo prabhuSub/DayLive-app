@@ -32,7 +32,10 @@ targets:
         NSSupportsLiveActivities: true
         NSCalendarsFullAccessUsageDescription: "Hyperday reads your calendar events to show them in your day, calendar and Live Activity. They never leave your iPhone."
         NSPhotoLibraryAddUsageDescription: "Hyperday saves your weekly recap image to Photos when you tap Save image."
-        NSHealthShareUsageDescription: "Hyperday reads your sleep to suggest a bedtime for tomorrow. It stays on your iPhone."
+        NSHealthShareUsageDescription: "Hyperday reads your sleep and workouts to suggest a bedtime, tick workout blocks and show what makes your good days. It stays on your iPhone."
+        NSLocationWhenInUseUsageDescription: "Hyperday uses your location to save Home, Office and Gym, so it can show when you actually arrived and left. It stays on your iPhone."
+        NSLocationAlwaysAndWhenInUseUsageDescription: "Hyperday notices when you arrive at or leave Home, Office and Gym, even when it's closed, to fill in what really happened and learn your commute. It stays on your iPhone."
+        NSCameraUsageDescription: "Hyperday reads dates and times from a whiteboard, flyer or ticket to turn them into blocks. Photos aren't saved."
         CFBundleURLTypes:
           - CFBundleURLName: com.prabhu.daylive
             CFBundleURLSchemes: [hyperday]

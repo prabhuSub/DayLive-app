@@ -36,6 +36,11 @@ struct TodayView: View {
                             .font(.system(size: 22, weight: .bold))
                             .foregroundStyle(Theme.text)
                         timeline(snap: snap)
+                        Text("Plan vs real")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundStyle(Theme.text)
+                            .padding(.top, 8)
+                        RealityCard(blocks: snap.all, now: now)
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 20)

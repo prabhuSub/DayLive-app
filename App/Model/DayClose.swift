@@ -28,9 +28,14 @@ enum DayCloseSettings {
         get { (d.object(forKey: "dcRoutineMinutes") as? Int) ?? 45 }
         set { d.set(newValue, forKey: "dcRoutineMinutes") }
     }
+    /// Your own number if you set one, else what Location learned (#3), else 25 min.
     static var commuteMinutes: Int {
-        get { (d.object(forKey: "dcCommuteMinutes") as? Int) ?? 25 }
+        get { (d.object(forKey: "dcCommuteMinutes") as? Int) ?? learnedCommuteMinutes ?? 25 }
         set { d.set(newValue, forKey: "dcCommuteMinutes") }
+    }
+    static var learnedCommuteMinutes: Int? {
+        get { d.object(forKey: "dcCommuteLearned") as? Int }
+        set { d.set(newValue, forKey: "dcCommuteLearned") }
     }
     /// Weekdays you go to the office (Calendar weekday numbers, 1 = Sunday). Default Mon–Fri.
     static var officeDays: Set<Int> {
@@ -82,11 +87,7 @@ enum HealthSleep {
     static func averageMinutes(days: Int = 14) async -> Int? {
         guard HKHealthStore.isHealthDataAvailable(),
               let type = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return nil }
-        do {
-            try await store.requestAuthorization(toShare: [], read: [type])
-        } catch {
-            return nil   // no HealthKit entitlement (deploy.sh fallback) or denied
-        }
+        guard await HealthReality.authorize() else { return nil }   // one prompt for sleep + workouts
         let end = Date.now
         guard let start = Calendar.current.date(byAdding: .day, value: -days, to: end) else { return nil }
         let predicate = HKQuery.predicateForSamples(withStart: start, end: end)

@@ -9,6 +9,7 @@ struct Block: Identifiable, Codable, Hashable {
     var source: BlockSource
     var calendarName: String? = nil   // e.g. "Tesla" (calendar events only; used by category rules)
     var declined: Bool = false        // you declined this calendar invite
+    var location: String? = nil       // calendar event location (Drive card uses it for the arrival time)
 
     var duration: TimeInterval { end.timeIntervalSince(start) }
 

@@ -155,6 +155,18 @@ struct DayLiveShortcuts: AppShortcutsProvider {
             systemImageName: "target"
         )
         AppShortcut(
+            intent: ImDrivingIntent(),
+            phrases: ["I'm driving in \(.applicationName)"],
+            shortTitle: "I'm Driving",
+            systemImageName: "car"
+        )
+        AppShortcut(
+            intent: ArrivedIntent(),
+            phrases: ["I arrived in \(.applicationName)"],
+            shortTitle: "Arrived",
+            systemImageName: "mappin.and.ellipse"
+        )
+        AppShortcut(
             intent: AddBlockIntent(),
             phrases: [
                 "Add a block in \(.applicationName)",

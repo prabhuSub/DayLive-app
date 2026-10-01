@@ -46,7 +46,8 @@ final class CalendarService {
                     end: event.endDate,
                     source: .calendar,
                     calendarName: event.calendar?.title,
-                    declined: declined
+                    declined: declined,
+                    location: event.location?.isEmpty == false ? event.location : nil
                 )
             }
     }
