@@ -41,9 +41,7 @@ struct DayLiveActivityWidget: Widget {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack(alignment: .center, spacing: 12) {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(context.state.title)
-                                    .font(.system(size: 20, weight: .bold))
-                                    .lineLimit(1)
+                                CardTitle(state: context.state, size: 20)
                                 if let also = context.state.also {
                                     Text(also)
                                         .font(.system(size: 13))

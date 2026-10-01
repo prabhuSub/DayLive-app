@@ -376,16 +376,16 @@ struct RootView: View {
     var body: some View {
         TabView(selection: $tab) {
             TodayView()
-                .tabItem { Label { Text(AppTab.today.title) } icon: { Image("hd-" + AppTab.today.icon).renderingMode(.template) } }
+                .tabItem { Label { Text(AppTab.today.title) } icon: { Image("hd-tab-" + AppTab.today.icon).renderingMode(.template) } }
                 .tag(AppTab.today)
             CalendarTabView()
-                .tabItem { Label { Text(AppTab.calendar.title) } icon: { Image("hd-" + AppTab.calendar.icon).renderingMode(.template) } }
+                .tabItem { Label { Text(AppTab.calendar.title) } icon: { Image("hd-tab-" + AppTab.calendar.icon).renderingMode(.template) } }
                 .tag(AppTab.calendar)
             StatsView()
-                .tabItem { Label { Text(AppTab.stats.title) } icon: { Image("hd-" + AppTab.stats.icon).renderingMode(.template) } }
+                .tabItem { Label { Text(AppTab.stats.title) } icon: { Image("hd-tab-" + AppTab.stats.icon).renderingMode(.template) } }
                 .tag(AppTab.stats)
             SettingsView()
-                .tabItem { Label { Text(AppTab.settings.title) } icon: { Image("hd-" + AppTab.settings.icon).renderingMode(.template) } }
+                .tabItem { Label { Text(AppTab.settings.title) } icon: { Image("hd-tab-" + AppTab.settings.icon).renderingMode(.template) } }
                 .tag(AppTab.settings)
         }
         .tint(Theme.text)   // tab bar stays full size while scrolling (Prabhu's call)

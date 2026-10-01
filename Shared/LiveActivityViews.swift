@@ -66,9 +66,7 @@ struct LockScreenCard: View {
 
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(state.title)
-                        .font(.system(size: 23, weight: .bold))
-                        .lineLimit(1)
+                    CardTitle(state: state, size: 23)
                     if let also = state.also {
                         if state.alsoIsStep == true {
                             // Next step: grey pill, white text
@@ -220,6 +218,27 @@ struct TimeLeft: View {
     }
 }
 
+/// The big title. In free time it's a green "Free" pill.
+struct CardTitle: View {
+    let state: DayActivityAttributes.ContentState
+    var size: CGFloat = 23
+
+    var body: some View {
+        if state.source == .free && state.nextStart != nil {
+            Text(state.title)
+                .font(.system(size: size * 0.8, weight: .bold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, size * 0.55)
+                .padding(.vertical, size * 0.14)
+                .background(DayLiveStyle.doneGreen, in: Capsule())
+        } else {
+            Text(state.title)
+                .font(.system(size: size, weight: .bold))
+                .lineLimit(1)
+        }
+    }
+}
+
 /// "1:26:10 left" · "+4:12 over" · "1:40:05 until Standup". Ticks on its own on the Lock Screen.
 struct TimerLabel: View {
     let state: DayActivityAttributes.ContentState
@@ -228,7 +247,7 @@ struct TimerLabel: View {
     /// Timer text grows to fill its space on the Lock Screen, so give it an exact width:
     /// "8:19:47" needs room for 7 characters, "26:10" for 5.
     private func digits(_ interval: TimeInterval) -> CGFloat {
-        size * (interval >= 3600 ? 4.1 : 2.95)
+        size * (interval >= 3600 ? 4.75 : 3.4)
     }
 
     var body: some View {

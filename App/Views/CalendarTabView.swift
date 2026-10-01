@@ -1,3 +1,4 @@
+import EventKit
 import SwiftUI
 import UIKit
 
@@ -13,6 +14,7 @@ struct CalendarTabView: View {
     @State private var showTasks = true
     @State private var showDeclined = false
     @State private var editing: Block?
+    @State private var cache = ItemsCache()
     @State private var agendaTop: Date?   // the day at the top of the agenda list
     @State private var scrollTick = 0   // bumped on every date tap so the list scrolls even if the date didn't change
 
@@ -46,7 +48,11 @@ struct CalendarTabView: View {
                 .onChange(of: agendaTop) { _, top in
                     // Keep the title and week strip in step with the day you scrolled to.
                     // Only when the week changes, so scrolling doesn't redraw everything constantly.
-                    if let top, !cal.isDate(top, equalTo: selected, toGranularity: .weekOfYear) { selected = top }
+                    if let top, !cal.isDate(top, equalTo: selected, toGranularity: .weekOfYear) {
+                        var t = Transaction()
+                        t.disablesAnimations = true
+                        withTransaction(t) { selected = top }
+                    }
                 }
             } else {
                 ScrollViewReader { proxy in
@@ -96,6 +102,7 @@ struct CalendarTabView: View {
             tapDay(cal.startOfDay(for: .now), fromTodayButton: true)
         }
         .onChange(of: mode) { _, _ in tapDay(selected, fromTodayButton: true) }
+        .onReceive(NotificationCenter.default.publisher(for: .EKEventStoreChanged)) { _ in cache.eventsVersion += 1 }
         .sheet(item: $editing) { block in
             BlockEditorSheet(
                 block: block,
@@ -172,6 +179,16 @@ struct CalendarTabView: View {
 
     /// Calendar events + (optionally) planned tasks, grouped by day start.
     private func items(in range: DateInterval) -> [Date: [Block]] {
+        let key = "\(range.start.timeIntervalSince1970)|\(range.end.timeIntervalSince1970)|\(showTasks)|\(showDeclined)|"
+            + "\(store.planBlocks.hashValue)|\(store.overrides.hashValue)|\(FocusFilterState.current.rawValue)|\(cache.eventsVersion)"
+        if key == cache.key { return cache.value }
+        let value = loadItems(in: range)
+        cache.key = key
+        cache.value = value
+        return value
+    }
+
+    private func loadItems(in range: DateInterval) -> [Date: [Block]] {
         var list = CalendarService.shared.events(from: range.start, to: range.end, includeDeclined: showDeclined)
         if showTasks {
             let tasks = store.planBlocks.filter { $0.start >= range.start && $0.start < range.end }
@@ -635,4 +652,12 @@ struct WeekGrid: View {
         let hour12 = h % 12 == 0 ? 12 : h % 12
         return "\(hour12)\(h < 12 || h == 24 ? "a" : "p")"
     }
+}
+
+
+/// Remembers the last calendar lookup; scrolling the agenda redraws often, EventKit lookups are slow.
+final class ItemsCache {
+    var key = ""
+    var value: [Date: [Block]] = [:]
+    var eventsVersion = 0
 }

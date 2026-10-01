@@ -66,18 +66,30 @@ def svg(body: str) -> str:
             'stroke="#000" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">' + body + '</svg>')
 
 
-def write(catalog: Path, names):
+TABS = ["today", "calendar", "stats", "settings"]
+
+
+def tab_svg(body: str) -> str:
+    # Tab bar: 28pt canvas, glyph cropped tighter (bigger) and a heavier 2.2 stroke.
+    return ('<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="2 2 20 20" fill="none" '
+            'stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' + body + '</svg>')
+
+
+def write(catalog: Path, names, tabs=False):
     folder = catalog / "Icons"
     if folder.exists():
         shutil.rmtree(folder)
     folder.mkdir(parents=True)
     (folder / "Contents.json").write_text(json.dumps({"info": {"author": "xcode", "version": 1}}, indent=2))
-    for name in names:
-        d = folder / f"hd-{name}.imageset"
+    items = [(n, f"hd-{n}", svg(ICONS[n])) for n in names]
+    if tabs:
+        items += [(n, f"hd-tab-{n}", tab_svg(ICONS[n])) for n in TABS]
+    for name, asset, source in items:
+        d = folder / f"{asset}.imageset"
         d.mkdir()
-        cairosvg.svg2pdf(bytestring=svg(ICONS[name]).encode(), write_to=str(d / f"hd-{name}.pdf"))
+        cairosvg.svg2pdf(bytestring=source.encode(), write_to=str(d / f"{asset}.pdf"))
         (d / "Contents.json").write_text(json.dumps({
-            "images": [{"filename": f"hd-{name}.pdf", "idiom": "universal"}],
+            "images": [{"filename": f"{asset}.pdf", "idiom": "universal"}],
             "info": {"author": "xcode", "version": 1},
             "properties": {"preserves-vector-representation": True, "template-rendering-intent": "template"},
         }, indent=2))
@@ -85,6 +97,6 @@ def write(catalog: Path, names):
 
 if __name__ == "__main__":
     root = Path(__file__).resolve().parent.parent
-    write(root / "App/Assets.xcassets", list(ICONS))
+    write(root / "App/Assets.xcassets", list(ICONS), tabs=True)
     write(root / "Widget/Assets.xcassets", WIDGET)
     print(f"{len(ICONS)} app icons, {len(WIDGET)} widget icons")

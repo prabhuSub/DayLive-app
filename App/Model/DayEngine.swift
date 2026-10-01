@@ -65,9 +65,7 @@ struct DaySnapshot {
                 }
             }
         } else if let n = next {
-            title = "Free"
-            actionID = n.id
-            action = .startNext
+            title = "Free"   // no button in free time; the next block starts on its own
             let whereText = n.source == .calendar ? (n.calendarName ?? "Calendar") : "My plan"
             extraLine = "Next: \(n.title) \(n.start.shortTime) · \(whereText)"
         }
