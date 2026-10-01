@@ -103,8 +103,6 @@ struct LockScreenCard: View {
                         .foregroundStyle(.white.opacity(0.72))
                         .lineLimit(1)
                 }
-                // Category icon lives top right now, so the title and second line get the full width.
-                SourceIcon(source: state.source, size: 26, tint: state.source == .free ? nil : state.accentColor, iconName: state.iconName)
             }
 
             HStack(alignment: .top, spacing: 12) {
@@ -117,6 +115,8 @@ struct LockScreenCard: View {
                         AdjustTimeButtons(state: state)
                     }
                 }
+                Spacer(minLength: 0)
+                SourceIcon(source: state.source, size: 44, tint: state.source == .free ? nil : state.accentColor, iconName: state.iconName)
             }
             .padding(.top, 2)
 
