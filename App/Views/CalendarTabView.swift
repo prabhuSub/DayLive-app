@@ -13,6 +13,7 @@ struct CalendarTabView: View {
     @State private var showTasks = true
     @State private var showDeclined = false
     @State private var editing: Block?
+    @State private var agendaTop: Date?   // the day at the top of the agenda list
     @State private var scrollTick = 0   // bumped on every date tap so the list scrolls even if the date didn't change
 
     private let cal = Calendar.current
@@ -23,82 +24,78 @@ struct CalendarTabView: View {
 
         VStack(spacing: 0) {
             HeaderBar(section: "Calendar")
-            ScrollViewReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    VStack(alignment: .leading, spacing: 14) {
-                        titleRow
-                        PillNav(options: Mode.allCases, selection: $mode) { $0.rawValue }
-                        if mode == .month {
-                            monthGrid(byDay: byDay)
-                        } else {
-                            weekStrip(byDay: byDay)
-                                .padding(.leading, mode == .week ? WeekGrid.labelWidth : 0)
+            if mode == .agenda {
+                // Controls stay put; only the day list scrolls. It opens with TODAY at the top,
+                // and you scroll up for past days or down for future ones.
+                controls(byDay: byDay)
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 10) {
+                        accessNote
+                        ForEach(agendaDays, id: \.self) { day in
+                            daySection(day, items: byDay[day] ?? [])
+                                .id(day)
                         }
-                        filters
                     }
-                    .padding(20)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Theme.bg)
-
-                    VStack(alignment: .leading, spacing: 10) {
-                        if !CalendarService.shared.hasAccess {
-                            Text("Calendar access is off. Turn it on in Settings › Hyperday › Calendars.")
-                                .font(.system(size: 13))
-                                .foregroundStyle(Theme.muted)
-                        }
-                        if mode == .agenda {
-                            // One continuous list: scroll back through past days or ahead, opens on today.
-                            LazyVStack(alignment: .leading, spacing: 10) {
-                                ForEach(agendaDays, id: \.self) { day in
-                                    daySection(day, items: byDay[day] ?? [])
-                                        .id(day)
+                    .scrollTargetLayout()
+                    .padding(.horizontal, 20)
+                    .padding(.top, 6)
+                    .padding(.bottom, 40)
+                }
+                .scrollPosition(id: $agendaTop, anchor: .top)
+                .background(Theme.section)
+                .onChange(of: agendaTop) { _, top in
+                    // Keep the title and week strip in step with the day you scrolled to.
+                    // Only when the week changes, so scrolling doesn't redraw everything constantly.
+                    if let top, !cal.isDate(top, equalTo: selected, toGranularity: .weekOfYear) { selected = top }
+                }
+            } else {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 0) {
+                            controls(byDay: byDay)
+                            VStack(alignment: .leading, spacing: 10) {
+                                accessNote
+                                if mode == .week {
+                                    WeekGrid(days: weekDays, byDay: byDay,
+                                             color: { categories.displayColor(for: $0) },
+                                             onTap: { editing = $0 },
+                                             onMove: { block, start, end in
+                                                 let minutes = Int(end.timeIntervalSince(start) / 60)
+                                                 store.update(id: block.id, title: block.title, start: start, minutes: minutes)
+                                                 Task { await LiveActivityManager.shared.refresh() }
+                                             })
+                                        .padding(.vertical, 12)
+                                        .padding(.trailing, 8)
+                                        .cardBox(padding: 0)
+                                } else {
+                                    daySection(selected, items: byDay[selected] ?? [])
+                                        .id(selected)
                                 }
                             }
-                        } else if mode == .week {
-                            WeekGrid(days: weekDays, byDay: byDay,
-                                     color: { categories.displayColor(for: $0) },
-                                     onTap: { editing = $0 },
-                                     onMove: { block, start, end in
-                                         let minutes = Int(end.timeIntervalSince(start) / 60)
-                                         store.update(id: block.id, title: block.title, start: start, minutes: minutes)
-                                         Task { await LiveActivityManager.shared.refresh() }
-                                     })
-                                .padding(.vertical, 12)
-                                .padding(.trailing, 8)
-                                .cardBox(padding: 0)
-                        } else {
-                            daySection(selected, items: byDay[selected] ?? [])
-                                .id(selected)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 16)
+                            .padding(.bottom, 40)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    .padding(.bottom, 40)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-            .background(Theme.section)
-            .onChange(of: scrollTick) { _, _ in
-                // Let the new week/month lay out first, then glide to the day.
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        proxy.scrollTo(selected, anchor: .top)
+                    .background(Theme.section)
+                    .onChange(of: scrollTick) { _, _ in
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                            withAnimation(.easeInOut(duration: 0.3)) { proxy.scrollTo(selected, anchor: .top) }
+                        }
                     }
                 }
             }
-            // Always open on today; go back from there with ‹ or by tapping a date.
-            .onAppear {
-                // Opens on today, unless the heatmap asked for a specific day.
-                tapDay(CalendarJump.pending ?? cal.startOfDay(for: .now), fromTodayButton: true)
-                CalendarJump.pending = nil
-            }
-
-            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-                tapDay(cal.startOfDay(for: .now), fromTodayButton: true)
-            }
-            }
         }
+        // Always open on today (or the day the heatmap asked for).
+        .onAppear {
+            tapDay(CalendarJump.pending ?? cal.startOfDay(for: .now), fromTodayButton: true)
+            CalendarJump.pending = nil
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            tapDay(cal.startOfDay(for: .now), fromTodayButton: true)
+        }
+        .onChange(of: mode) { _, _ in tapDay(selected, fromTodayButton: true) }
         .sheet(item: $editing) { block in
             BlockEditorSheet(
                 block: block,
@@ -109,6 +106,32 @@ struct CalendarTabView: View {
                 Task { await LiveActivityManager.shared.refresh() }
             }
             .presentationDetents([.large])
+        }
+    }
+
+    private func controls(byDay: [Date: [Block]]) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            titleRow
+            PillNav(options: Mode.allCases, selection: $mode) { $0.rawValue }
+            if mode == .month {
+                monthGrid(byDay: byDay)
+            } else {
+                weekStrip(byDay: byDay)
+                    .padding(.leading, mode == .week ? WeekGrid.labelWidth : 0)
+            }
+            filters
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.bg)
+    }
+
+    @ViewBuilder
+    private var accessNote: some View {
+        if !CalendarService.shared.hasAccess {
+            Text("Calendar access is off. Turn it on in Settings › Hyperday › Calendars.")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.muted)
         }
     }
 
@@ -130,9 +153,10 @@ struct CalendarTabView: View {
         return cells
     }
 
-    /// Agenda: 90 days back to 90 days ahead of the selected day.
+    /// Agenda: one list from 6 months back to 6 months ahead of today.
     private var agendaDays: [Date] {
-        (-90...90).compactMap { cal.date(byAdding: .day, value: $0, to: selected) }
+        let today = cal.startOfDay(for: .now)
+        return (-180...180).compactMap { cal.date(byAdding: .day, value: $0, to: today) }
     }
 
     private var visibleRange: DateInterval {
@@ -206,6 +230,9 @@ struct CalendarTabView: View {
         let today = cal.startOfDay(for: .now)
         let target = (!fromTodayButton && cal.isDate(day, inSameDayAs: selected)) ? today : cal.startOfDay(for: day)
         withAnimation(.easeOut(duration: 0.2)) { selected = target }
+        if mode == .agenda {
+            withAnimation(.easeInOut(duration: 0.3)) { agendaTop = target }
+        }
         scrollTick += 1
     }
 
@@ -213,7 +240,10 @@ struct CalendarTabView: View {
         let next = mode != .month
             ? cal.date(byAdding: .day, value: 7 * direction, to: selected)
             : cal.date(byAdding: .month, value: direction, to: selected)
-        if let next { selected = cal.startOfDay(for: next) }
+        if let next {
+            selected = cal.startOfDay(for: next)
+            if mode == .agenda { withAnimation(.easeInOut(duration: 0.3)) { agendaTop = selected } }
+        }
         scrollTick += 1
     }
 
