@@ -372,6 +372,9 @@ enum AppTab: String, CaseIterable, Identifiable {
 /// and it shrinks when you scroll down.
 struct RootView: View {
     @State private var tab: AppTab = .today
+    @State private var adding: AddMode?
+
+    enum AddMode: String, Identifiable { case block, words, scan; var id: String { rawValue } }
 
     var body: some View {
         TabView(selection: $tab) {
@@ -391,6 +394,19 @@ struct RootView: View {
         .tint(Theme.text)   // tab bar stays full size while scrolling (Prabhu's call)
         .onReceive(NotificationCenter.default.publisher(for: CalendarJump.notification)) { _ in
             tab = .calendar
+        }
+        // v12: Tesla-style round + in thumb reach on every tab. Tap = Add block, hold = more.
+        .overlay(alignment: .bottomTrailing) {
+            AddFab { adding = $0 }
+                .padding(.trailing, 20)
+                .padding(.bottom, 72)
+        }
+        .sheet(item: $adding) { mode in
+            switch mode {
+            case .block: QuickAddSheet().presentationDetents([.large])
+            case .words: PlanWithWordsSheet().presentationDetents([.large])
+            case .scan: ScanSheet().presentationDetents([.large])
+            }
         }
     }
 }
@@ -475,5 +491,32 @@ struct SwipeRow<Content: View>: View {
     private func close() {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { offset = 0 }
         startOffset = 0
+    }
+}
+
+
+/// The round + (black in light mode, white in dark). Tap adds a block; press and hold for Plan with words / Scan.
+struct AddFab: View {
+    let open: (RootView.AddMode) -> Void
+
+    var body: some View {
+        Button { open(.block) } label: {
+            HDIcon("add", size: 26)
+                .foregroundStyle(Theme.bg)
+                .frame(width: 58, height: 58)
+                .background(Circle().fill(Theme.text))
+                .shadow(color: .black.opacity(0.28), radius: 10, y: 6)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Add block")
+        .accessibilityHint("Press and hold for Plan with words or Scan to blocks")
+        .contextMenu {
+            Button { open(.block) } label: { Label { Text("Add block") } icon: { Image("hd-add") } }
+            if AIPlanner.isAvailable {
+                Button { open(.words) } label: { Label { Text("Plan with words") } icon: { Image("hd-siri") } }
+            }
+            Button { open(.scan) } label: { Label { Text("Scan to blocks") } icon: { Image("hd-calendar-scan") } }
+        }
     }
 }
