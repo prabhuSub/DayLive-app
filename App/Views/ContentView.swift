@@ -25,11 +25,8 @@ struct TodayView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     hero(snap: snap)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 22)
-                        .padding(.bottom, 22)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Theme.bg)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 6)
                         // TV-app style: the hero lifts and fades as it scrolls up under the title.
                         .scrollTransition(.interactive, axis: .vertical) { view, phase in
                             view
@@ -40,7 +37,8 @@ struct TodayView: View {
 
                     VStack(alignment: .leading, spacing: 14) {
                         if !calendarGranted { calendarBanner }
-                        Text("Today")
+                        InfoRow(items: todayNumbers(snap))
+                        Text("Schedule")
                             .font(.system(size: 22, weight: .bold))
                             .foregroundStyle(Theme.text)
                         timeline(snap: snap)
@@ -57,12 +55,6 @@ struct TodayView: View {
                 }
             }
             .background(Theme.section)
-            // LIVE NOW sits top-right, under the theme button.
-            .overlay(alignment: .topTrailing) {
-                livePill(snap: snap)
-                    .padding(.top, 10)
-                    .padding(.trailing, 16)
-            }
         }
         .sheet(isPresented: $showingWords) { PlanWithWordsSheet().presentationDetents([.large]) }
         .sheet(isPresented: $showingScan) { ScanSheet().presentationDetents([.large]) }
@@ -112,21 +104,26 @@ struct TodayView: View {
             subtitle = snap.all.isEmpty ? "Tap Add block to plan your day" : "Nothing else today"
         }
 
-        return VStack(alignment: .leading, spacing: 18) {
+        let date = now.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()).uppercased()
+        let state = snap.current != nil ? (snap.overtime ? "OVER TIME" : "NOW") : (snap.next != nil ? "FREE" : "TODAY")
+        return VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
-                Caps(now.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
+                Text("\(date) · \(state)")
+                    .font(.system(size: 11, weight: .heavy))
+                    .kerning(1.4)
+                    .foregroundStyle(.white.opacity(0.7))
                 Text(title)
-                    .font(.system(size: 36, weight: .bold))
-                    .foregroundStyle(Theme.text)
+                    .font(.system(size: 30, weight: .heavy))
+                    .foregroundStyle(.white)
                     .lineLimit(2)
                     .minimumScaleFactor(0.7)
                 Text(subtitle)
-                    .font(.system(size: 15))
-                    .foregroundStyle(Theme.muted)
+                    .font(.system(size: 14))
+                    .foregroundStyle(.white.opacity(0.75))
             }
-            .padding(.trailing, 120)   // room for the LIVE NOW pill
-
-            InfoRow(items: todayNumbers(snap))
+            // Tap the live block's name to open it (replaces the old LIVE NOW pill).
+            .contentShape(Rectangle())
+            .onTapGesture { if let c = snap.current { editing = c } }
 
             HStack(spacing: 10) {
                 Button("Add block") { showingAdd = true }
@@ -136,7 +133,7 @@ struct TodayView: View {
                         if activity.isRunning { await activity.stop() } else { await activity.start() }
                     }
                 }
-                .buttonStyle(SecondaryButtonStyle(width: 116))
+                .buttonStyle(HeroOutlineButton())
                 Spacer(minLength: 0)
                 // #5 Plan with words · #8 Scan to blocks
                 iconButton("siri", label: "Plan with words") { showingWords = true }
@@ -151,9 +148,16 @@ struct TodayView: View {
             if !activity.isRunning || activity.lastError != nil {
                 Text(activity.statusText)
                     .font(.system(size: 12))
-                    .foregroundStyle(activity.lastError == nil ? Theme.muted : Theme.red)
+                    .foregroundStyle(activity.lastError == nil ? Color.white.opacity(0.7) : Theme.red)
             }
         }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            LinearGradient(colors: [Color(red: 0.11, green: 0.15, blue: 0.22), Color(red: 0.24, green: 0.21, blue: 0.31)],
+                           startPoint: .topLeading, endPoint: .bottomTrailing),
+            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+        )
     }
 
     /// FOCUSED (Work + Deep Work so far) · STEPS · MEETINGS LEFT
@@ -241,9 +245,9 @@ struct TodayView: View {
     private func iconButton(_ icon: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HDIcon(icon, size: 20)
-                .foregroundStyle(Theme.text)
+                .foregroundStyle(.white)
                 .frame(width: 40, height: 40)
-                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.border, lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.4), lineWidth: 1))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -292,5 +296,18 @@ struct TodayView: View {
             .buttonStyle(SecondaryButtonStyle())
         }
         .cardBox()
+    }
+}
+
+
+/// White outline button on the dark Today card.
+private struct HeroOutlineButton: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: 116, height: 40)
+            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.45), lineWidth: 1))
+            .opacity(configuration.isPressed ? 0.7 : 1)
     }
 }
