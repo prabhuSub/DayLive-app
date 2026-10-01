@@ -47,6 +47,47 @@ struct LockScreenCard: View {
             .replacingOccurrences(of: " at ", with: " ")
     }
 
+    /// "Standup 10:30 AM" from the label "Next · Standup at 10:30 AM".
+    private var nextParts: (title: String, time: String)? {
+        guard state.label.hasPrefix("Next · "), let r = state.label.range(of: " at ", options: .backwards) else { return nil }
+        let title = state.label[state.label.index(state.label.startIndex, offsetBy: 7)..<r.lowerBound]
+        return (String(title), String(state.label[r.upperBound...]))
+    }
+
+    private func pill(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(.white)
+            .lineLimit(1)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background(Color(white: 0.45).opacity(0.55), in: Capsule())
+    }
+
+    /// v13: under the title. Step → [step pill][Next 3:00 pill]; overlap → "also:" text;
+    /// otherwise → [Next: Title · 3:00 PM] pill. Free time keeps its own line.
+    @ViewBuilder
+    private var secondLine: some View {
+        if state.alsoIsStep == true, let also = state.also {
+            HStack(spacing: 6) {
+                pill(also)
+                if let n = nextParts { pill("Next \(n.time)").fixedSize() }
+            }
+        } else if let also = state.also, state.source == .free || also.hasPrefix("also:") {
+            Text(also)
+                .font(.system(size: 13))
+                .foregroundStyle(.white.opacity(0.8))
+                .lineLimit(1)
+        } else if let n = nextParts {
+            pill("Next: \(n.title) · \(n.time)")
+        } else if let also = state.also {
+            Text(also)
+                .font(.system(size: 13))
+                .foregroundStyle(.white.opacity(0.8))
+                .lineLimit(1)
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             // Top row (like Tesla's card): [app icon] 26:10 left ······ Next: Standup 10:30 PM
@@ -56,7 +97,7 @@ struct LockScreenCard: View {
                     .foregroundStyle(.white)
                     .fixedSize()
                 Spacer(minLength: 6)
-                if state.nextStart == nil || isStale {
+                if isStale {
                     Text(nextText)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.72))
@@ -67,23 +108,7 @@ struct LockScreenCard: View {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
                     CardTitle(state: state, size: 23)
-                    if let also = state.also {
-                        if state.alsoIsStep == true {
-                            // Next step: grey pill, white text
-                            Text(also)
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                                .background(Color(white: 0.45).opacity(0.55), in: Capsule())
-                        } else {
-                            Text(also)
-                                .font(.system(size: 13))
-                                .foregroundStyle(.white.opacity(0.8))
-                                .lineLimit(1)
-                        }
-                    }
+                    secondLine
                 }
                 Spacer(minLength: 0)
                 SourceIcon(source: state.source, size: 44, tint: state.source == .free ? nil : state.accentColor, iconName: state.iconName)
@@ -244,10 +269,16 @@ struct TimerLabel: View {
     let state: DayActivityAttributes.ContentState
     var size: CGFloat = 14
 
-    /// Timer text grows to fill its space on the Lock Screen, so give it an exact width:
-    /// "8:19:47" needs room for 7 characters, "26:10" for 5.
-    private func digits(_ interval: TimeInterval) -> CGFloat {
-        size * (interval >= 3600 ? 4.75 : 3.4)
+    /// Live timer text stretches to fill its box, so size the box with an invisible sample
+    /// ("8:88:88" or "88:88") in the same font, and lay the timer over it.
+    private func timer(_ range: ClosedRange<Date>, down: Bool) -> some View {
+        let long = abs(range.upperBound.timeIntervalSince(range.lowerBound)) >= 3600 || !down
+        return Text(long ? "8:88:88" : "88:88")
+            .hidden()
+            .overlay(alignment: .leading) {
+                Text(timerInterval: range, countsDown: down)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
     }
 
     var body: some View {
@@ -255,20 +286,17 @@ struct TimerLabel: View {
             if let over = state.overSince {
                 HStack(spacing: 0) {
                     Text("+")
-                    Text(timerInterval: over...over.addingTimeInterval(24 * 3600), countsDown: false)
-                        .frame(width: digits(Date.now.timeIntervalSince(over)), alignment: .leading)
+                    timer(over...over.addingTimeInterval(24 * 3600), down: false)
                     Text(" over")
                 }
             } else if let end = state.currentEnd, end > Date.now {
                 HStack(spacing: 4) {
-                    Text(timerInterval: Date.now...end, countsDown: true)
-                        .frame(width: digits(end.timeIntervalSinceNow), alignment: .leading)
+                    timer(Date.now...end, down: true)
                     Text("left")
                 }
             } else if let next = state.nextStart, next > Date.now {
                 HStack(spacing: 4) {
-                    Text(timerInterval: Date.now...next, countsDown: true)
-                        .frame(width: digits(next.timeIntervalSinceNow), alignment: .leading)
+                    timer(Date.now...next, down: true)
                     Text("until \(state.nextTitle ?? "next")")
                         .lineLimit(1)
                 }
