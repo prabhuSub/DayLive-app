@@ -117,6 +117,7 @@ struct LockScreenCard: View {
 
             HStack(spacing: 12) {
                 DayBar(state: state, height: 6)
+                AdjustTimeButtons(state: state)
                 BlockActionButton(state: state)   // Done / Step n/N are always yellow, never the category color
             }
             .padding(.top, 6)
@@ -371,6 +372,33 @@ struct BlockActionButton: View {
         case .startNext: return "start"
         case .checkStep: return "step-done"
         }
+    }
+}
+
+/// v19: −15 / +15 beside Done. Only for your own planned block while it's running.
+struct AdjustTimeButtons: View {
+    let state: DayActivityAttributes.ContentState
+
+    var body: some View {
+        if let id = state.actionBlockID, let action = state.action, action != .startNext,
+           state.source == .plan, state.closed != true {
+            HStack(spacing: 6) {
+                button(id, -15, "−15")
+                button(id, 15, "+15")
+            }
+        }
+    }
+
+    private func button(_ id: String, _ m: Int, _ label: String) -> some View {
+        Button(intent: AdjustTimeIntent(blockID: id, minutes: m)) {
+            Text(label)
+                .font(.system(size: 14, weight: .bold).monospacedDigit())
+                .foregroundStyle(.white)
+                .frame(width: 46, height: 36)
+                .background(Color.white.opacity(0.16), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(m > 0 ? "Add 15 minutes" : "Cut 15 minutes")
     }
 }
 
