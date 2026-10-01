@@ -156,14 +156,14 @@ struct TodayView: View {
     private var heroButtons: some View {
         HStack(spacing: 10) {
             Button("Add block") { showingAdd = true }
-                .buttonStyle(PrimaryButtonStyle())
+                .buttonStyle(PrimaryButtonStyle(width: 124))
             Button(activity.isRunning ? "Stop Live" : "Go Live") {
                 Task {
                     if activity.isRunning { await activity.stop() } else { await activity.start() }
                 }
             }
-            .buttonStyle(SecondaryButtonStyle())
-            Spacer().frame(width: 6)   // extra gap before the two icon buttons
+            .buttonStyle(SecondaryButtonStyle(width: 124))
+            Spacer(minLength: 16)   // left pair hugs the card's left edge, icons hug its right edge
             // #5 Plan with words · #8 Scan to blocks
             iconButton("siri", label: "Plan with words") { showingWords = true }
             iconButton("calendar-scan", label: "Scan to blocks") { showingScan = true }
