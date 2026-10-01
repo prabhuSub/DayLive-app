@@ -74,7 +74,7 @@ TABS = ["today", "calendar", "stats", "settings"]
 def tab_svg(body: str) -> str:
     # Tab bar: 28pt canvas, glyph cropped tighter (bigger) and a heavier 2.2 stroke.
     return ('<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="2 2 20 20" fill="none" '
-            'stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' + body + '</svg>')
+            'stroke="#000" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">' + body + '</svg>')
 
 
 def write(catalog: Path, names, tabs=False):
