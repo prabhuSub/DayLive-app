@@ -397,9 +397,7 @@ struct RootView: View {
         }
         // v12: Tesla-style round + in thumb reach on every tab. Tap = Add block, hold = more.
         .overlay(alignment: .bottomTrailing) {
-            AddFab { adding = $0 }
-                .padding(.trailing, 20)
-                .padding(.bottom, 72)
+            AddFab { adding = $0 }   // fills the screen so the hold blur covers everything
         }
         .sheet(item: $adding) { mode in
             switch mode {
@@ -522,7 +520,8 @@ struct AddFab: View {
                 .frame(width: 240)
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .shadow(color: .black.opacity(0.2), radius: 20, y: 8)
-                .padding(.bottom, 72)
+                .padding(.trailing, 20)
+                .padding(.bottom, 72 + 72)
                 .transition(.scale(scale: 0.85, anchor: .bottomTrailing).combined(with: .opacity))
             }
             HDIcon("add", size: 26)
@@ -540,7 +539,10 @@ struct AddFab: View {
                 .accessibilityLabel("Add block")
                 .accessibilityHint("Press and hold for Plan with words or Scan to blocks")
                 .accessibilityAction(named: "More ways to add") { menu = true }
+                .padding(.trailing, 20)
+                .padding(.bottom, 72)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
     }
 
     private func item(_ title: String, _ icon: String, _ mode: RootView.AddMode) -> some View {
