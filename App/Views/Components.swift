@@ -388,23 +388,13 @@ struct RootView: View {
                 .tabItem { Label { Text(AppTab.settings.title) } icon: { Image("hd-" + AppTab.settings.icon).renderingMode(.template) } }
                 .tag(AppTab.settings)
         }
-        .tint(Theme.text)
-        .modifier(MinimizeTabBarOnScroll())
+        .tint(Theme.text)   // tab bar stays full size while scrolling (Prabhu's call)
         .onReceive(NotificationCenter.default.publisher(for: CalendarJump.notification)) { _ in
             tab = .calendar
         }
     }
 }
 
-private struct MinimizeTabBarOnScroll: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content.tabBarMinimizeBehavior(.onScrollDown)
-        } else {
-            content
-        }
-    }
-}
 
 
 // MARK: - Swipe row (Today list lives in a ScrollView, where .swipeActions isn't available)
