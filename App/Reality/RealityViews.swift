@@ -50,7 +50,7 @@ struct RealityCard: View {
                             .offset(x: 30 + laneW + 8)
                     }
                     if now > top && y(now) < height {
-                        Rectangle().fill(Theme.red).frame(height: 2).offset(x: 26, y: y(now))
+                        Rectangle().fill(Theme.red).frame(height: 2).padding(.leading, 26).offset(y: y(now))  // stays inside the card
                     }
                 }
             }

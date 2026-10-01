@@ -25,7 +25,7 @@ struct TodayView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     hero(snap: snap)
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, 20)   // same margin as the title and the cards below
                         .padding(.top, 6)
                         // TV-app style: the hero lifts and fades as it scrolls up under the title.
                         .scrollTransition(.interactive, axis: .vertical) { view, phase in
@@ -35,7 +35,7 @@ struct TodayView: View {
                                 .scaleEffect(phase.value < 0 ? 1 + phase.value * 0.04 : 1, anchor: .top)
                         }
                     heroButtons
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, 20)
                         .padding(.top, 12)
 
                     VStack(alignment: .leading, spacing: 14) {
@@ -163,6 +163,7 @@ struct TodayView: View {
                 }
             }
             .buttonStyle(SecondaryButtonStyle())
+            Spacer().frame(width: 6)   // extra gap before the two icon buttons
             // #5 Plan with words · #8 Scan to blocks
             iconButton("siri", label: "Plan with words") { showingWords = true }
             iconButton("calendar-scan", label: "Scan to blocks") { showingScan = true }
