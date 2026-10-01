@@ -24,26 +24,20 @@ struct TodayView: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    hero(snap: snap)
-                        .padding(.horizontal, 20)   // same margin as the title and the cards below
-                        .padding(.top, 6)
-                        // TV-app style: the hero lifts and fades as it scrolls up under the title.
-                        .scrollTransition(.interactive, axis: .vertical) { view, phase in
-                            view
-                                .opacity(phase.value < 0 ? 1 + phase.value * 0.8 : 1)
-                                .offset(y: phase.value < 0 ? phase.value * -40 : 0)
-                                .scaleEffect(phase.value < 0 ? 1 + phase.value * 0.04 : 1, anchor: .top)
-                        }
-                    heroButtons
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
-                        // Fades and lifts with the card above; the round + covers adding once they're gone.
-                        .scrollTransition(.interactive, axis: .vertical) { view, phase in
-                            view
-                                .opacity(phase.value < 0 ? 1 + phase.value * 0.8 : 1)
-                                .offset(y: phase.value < 0 ? phase.value * -40 : 0)
-                                .scaleEffect(phase.value < 0 ? 1 + phase.value * 0.04 : 1, anchor: .top)
-                        }
+                    // Card + buttons move as one block: TV-app style, they lift and fade together
+                    // as they scroll up under the title. The round + covers adding once they're gone.
+                    VStack(alignment: .leading, spacing: 12) {
+                        hero(snap: snap)
+                        heroButtons
+                    }
+                    .padding(.horizontal, 20)   // same margin as the title and the cards below
+                    .padding(.top, 6)
+                    .scrollTransition(.interactive, axis: .vertical) { view, phase in
+                        view
+                            .opacity(phase.value < 0 ? 1 + phase.value * 0.8 : 1)
+                            .offset(y: phase.value < 0 ? phase.value * -40 : 0)
+                            .scaleEffect(phase.value < 0 ? 1 + phase.value * 0.04 : 1, anchor: .top)
+                    }
 
                     VStack(alignment: .leading, spacing: 14) {
                         if !calendarGranted { calendarBanner }
