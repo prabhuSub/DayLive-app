@@ -8,6 +8,7 @@ struct HeatEntry: TimelineEntry {
     let date: Date
     let data: HeatData?
     var day: WidgetDay? = nil
+    var week: [String: [Double]] = [:]
 }
 
 struct HeatProvider: TimelineProvider {
@@ -15,7 +16,8 @@ struct HeatProvider: TimelineProvider {
 
     func getSnapshot(in context: Context, completion: @escaping (HeatEntry) -> Void) {
         let heat = WidgetShared.loadHeat() ?? (context.isPreview ? .sample : nil)
-        completion(HeatEntry(date: .now, data: heat, day: WidgetShared.load() ?? (context.isPreview ? .sample : nil)))
+        completion(HeatEntry(date: .now, data: heat, day: WidgetShared.load() ?? (context.isPreview ? .sample : nil),
+                             week: WidgetShared.loadWeek() ?? [:]))
     }
 
     /// Redraw at every block start/end today (for "Next"), and just after midnight for the new day.
@@ -25,13 +27,14 @@ struct HeatProvider: TimelineProvider {
         let cal = Calendar.current
         let heat = WidgetShared.loadHeat()
         let day = WidgetShared.load()
+        let week = WidgetShared.loadWeek() ?? [:]
         var dates: Set<Date> = [now]
         for b in day?.todays(now) ?? [] {
             if b.start > now { dates.insert(b.start) }
             if b.end > now { dates.insert(b.end) }
         }
         let midnight = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: now))?.addingTimeInterval(60) ?? now
-        let entries = dates.filter { $0 < midnight }.sorted().prefix(40).map { HeatEntry(date: $0, data: heat, day: day) }
+        let entries = dates.filter { $0 < midnight }.sorted().prefix(40).map { HeatEntry(date: $0, data: heat, day: day, week: week) }
         completion(Timeline(entries: Array(entries), policy: .after(midnight)))
     }
 }
@@ -161,47 +164,72 @@ struct HeatWidgetView: View {
         }
     }
 
-    // Large: 12 months in two full-width rows, today + next, numbers vs last week.
+    // Large (v14): 6-month grid on top, this week's workload below, Streak · Best · This week at the bottom.
     private func large(_ d: HeatData) -> some View {
         let n = Numbers(d, now: entry.date)
-        let day = entry.day ?? WidgetDay(day: entry.date, blocks: [])
-        let todays = day.todays(entry.date)
-        let doneToday = d.count(entry.date)
-        let next = day.upcoming(at: entry.date, limit: 1).first
         return GeometryReader { geo in
             VStack(alignment: .leading, spacing: 7) {
                 HStack {
-                    caps("Blocks done · 12 months")
+                    caps("Blocks done · 6 months")
                     Spacer()
                     Text("\(d.total()) total").font(.system(size: 11)).foregroundStyle(.secondary)
                 }
-                fullGrid(d, weeks: 27, width: geo.size.width, gap: 2.4, offset: 26)
-                fullGrid(d, weeks: 26, width: geo.size.width * 26 / 27 - 2.4 / 27, gap: 2.4)
-                HStack(spacing: 8) {
-                    (Text("\(doneToday) of \(max(todays.count, doneToday))").bold().foregroundColor(Color(hex: "#30D158"))
-                     + Text(" done today"))
-                        .font(.system(size: 12))
-                        .lineLimit(1)
-                        .layoutPriority(1)
-                    Spacer(minLength: 4)
-                    if let next {
-                        (Text("Next ").foregroundColor(.secondary) + Text(next.title).bold()
-                         + Text(" \(next.start.formatted(date: .omitted, time: .shortened))").foregroundColor(.secondary))
-                            .font(.system(size: 12))
-                            .lineLimit(1)
-                    } else {
-                        Text("Nothing else today").font(.system(size: 12)).foregroundStyle(.secondary)
-                    }
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
-                .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.06)))
+                fullGrid(d, weeks: 26, width: geo.size.width, gap: 2.6)
+                Divider()
+                workload(width: geo.size.width)
                 Spacer(minLength: 0)
                 Divider()
                 HStack(spacing: 0) {
                     stat("Streak", "\(n.streak)d", n.streakTrend, "\(n.streakDelta)")
                     stat("Best", "\(n.best)d", n.bestIsNew ? .up : .same, n.bestIsNew ? "new" : "")
                     stat("This week", "\(n.week)", n.weekTrend, "\(n.weekDelta)")
+                }
+            }
+        }
+    }
+
+    /// Mon–Sun bars: grey = hours planned, green = hours done, today's letter in a white pill.
+    private func workload(width: CGFloat) -> some View {
+        var cal = Calendar(identifier: .gregorian)
+        cal.firstWeekday = 2
+        let start = cal.dateInterval(of: .weekOfYear, for: entry.date)?.start ?? entry.date
+        let days = (0..<7).compactMap { cal.date(byAdding: .day, value: $0, to: start) }
+        let vals = days.map { entry.week[HeatData.key($0)] ?? [0, 0] }
+        let maxH = max(4, vals.map { max($0[0], $0[1]) }.max() ?? 4)
+        let planned = vals.reduce(0) { $0 + $1[0] }
+        let done = vals.reduce(0) { $0 + $1[1] }
+        let barH: CGFloat = 46
+        let green = Color(hex: "#30D158")
+        return VStack(alignment: .leading, spacing: 5) {
+            HStack {
+                caps("This week · workload")
+                Spacer()
+                (Text("\(Int(planned.rounded()))h").bold() + Text(" planned · ")
+                 + Text("\(Int(done.rounded()))h").bold().foregroundColor(green) + Text(" done"))
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.secondary)
+            }
+            HStack(alignment: .bottom, spacing: 6) {
+                ForEach(days.indices, id: \.self) { i in
+                    let isToday = Calendar.current.isDate(days[i], inSameDayAs: entry.date)
+                    VStack(spacing: 3) {
+                        Text(vals[i][0] == 0 ? "–" : String(format: vals[i][0] < 10 ? "%.1gh" : "%.0fh", vals[i][0]))
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(isToday ? .primary : .secondary)
+                        ZStack(alignment: .bottom) {
+                            RoundedRectangle(cornerRadius: 4).fill(Color.primary.opacity(0.12))
+                                .frame(height: max(2, barH * vals[i][0] / maxH))
+                            RoundedRectangle(cornerRadius: 4).fill(green)
+                                .frame(height: barH * min(vals[i][1], maxH) / maxH)
+                        }
+                        .frame(width: 20, height: barH, alignment: .bottom)
+                        Text(["M", "T", "W", "T", "F", "S", "S"][i])
+                            .font(.system(size: 10, weight: .heavy))
+                            .foregroundStyle(isToday ? Color(UIColor.systemBackground) : .secondary)
+                            .frame(width: 20, height: 17)
+                            .background { if isToday { RoundedRectangle(cornerRadius: 5).fill(Color.primary) } }
+                    }
+                    .frame(maxWidth: .infinity)
                 }
             }
         }

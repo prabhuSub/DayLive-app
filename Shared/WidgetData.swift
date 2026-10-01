@@ -68,6 +68,24 @@ enum WidgetShared {
         return (try? data.write(to: url, options: .atomic)) != nil
     }
 
+    /// This week's workload for the Large heatmap widget: day key → [planned hours, done hours].
+    static var weekURL: URL? {
+        FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: appGroup)?
+            .appendingPathComponent("widget-week.json")
+    }
+
+    @discardableResult
+    static func saveWeek(_ load: [String: [Double]]) -> Bool {
+        guard let url = weekURL, let data = try? JSONEncoder().encode(load) else { return false }
+        return (try? data.write(to: url, options: .atomic)) != nil
+    }
+
+    static func loadWeek() -> [String: [Double]]? {
+        guard let url = weekURL, let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode([String: [Double]].self, from: data)
+    }
+
     static func loadCalendar() -> [String: Int]? {
         guard let url = calURL, let data = try? Data(contentsOf: url) else { return nil }
         return try? JSONDecoder().decode([String: Int].self, from: data)

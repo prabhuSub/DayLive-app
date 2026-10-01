@@ -15,14 +15,8 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HeaderBar(section: "Settings")
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Settings")
-                        .font(.system(size: 30, weight: .bold))
-                        .foregroundStyle(Theme.text)
-                        .padding(.bottom, 4)
-
                     VStack(alignment: .leading, spacing: 10) {
                         Caps("Appearance")
                         PillNav(options: Appearance.allCases,

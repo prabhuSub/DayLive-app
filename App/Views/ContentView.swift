@@ -22,7 +22,6 @@ struct TodayView: View {
         let snap = activity.snapshot(now: now)
 
         VStack(spacing: 0) {
-            HeaderBar(section: "Today")
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     hero(snap: snap)
@@ -31,6 +30,13 @@ struct TodayView: View {
                         .padding(.bottom, 22)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(Theme.bg)
+                        // TV-app style: the hero lifts and fades as it scrolls up under the title.
+                        .scrollTransition(.interactive, axis: .vertical) { view, phase in
+                            view
+                                .opacity(phase.value < 0 ? 1 + phase.value * 0.8 : 1)
+                                .offset(y: phase.value < 0 ? phase.value * -40 : 0)
+                                .scaleEffect(phase.value < 0 ? 1 + phase.value * 0.04 : 1, anchor: .top)
+                        }
 
                     VStack(alignment: .leading, spacing: 14) {
                         if !calendarGranted { calendarBanner }

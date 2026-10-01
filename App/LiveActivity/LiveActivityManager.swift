@@ -217,6 +217,7 @@ final class LiveActivityManager: ObservableObject {
     }
 
     private var lastCalendarCounts: [String: Int]?
+    private var lastWeekLoad: [String: [Double]]?
 
     /// Blocks + events per day for the 3-week calendar widget (last week · this week · next week).
     private func writeCalendarCounts(now: Date) {
@@ -229,6 +230,21 @@ final class LiveActivityManager: ObservableObject {
         let blocks = CalendarService.shared.events(from: from, to: to)
             + BlockStore.shared.planBlocks.filter { $0.start >= from && $0.start < to }
         for b in blocks { counts[HeatData.key(b.start), default: 0] += 1 }
+
+        // Workload for the Large heatmap widget: planned vs done hours, Monday–Sunday this week.
+        var week: [String: [Double]] = [:]
+        for i in 0..<7 {
+            guard let d = cal.date(byAdding: .day, value: i, to: thisWeek) else { continue }
+            let key = HeatData.key(d)
+            let planned = blocks.filter { cal.isDate($0.start, inSameDayAs: d) }.reduce(0) { $0 + $1.duration } / 3600
+            let done = HistoryStore.shared.entries(on: d).filter(\.done).reduce(0) { $0 + $1.hours }
+            week[key] = [(planned * 10).rounded() / 10, (done * 10).rounded() / 10]
+        }
+        if week != lastWeekLoad {
+            lastWeekLoad = week
+            if WidgetShared.saveWeek(week) { WidgetCenter.shared.reloadTimelines(ofKind: WidgetShared.heatKind) }
+        }
+
         guard counts != lastCalendarCounts else { return }
         lastCalendarCounts = counts
         if WidgetShared.saveCalendar(counts) {

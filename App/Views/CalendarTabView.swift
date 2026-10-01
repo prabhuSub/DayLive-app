@@ -25,7 +25,6 @@ struct CalendarTabView: View {
         let byDay = items(in: range)
 
         VStack(spacing: 0) {
-            HeaderBar(section: "Calendar")
             if mode == .agenda {
                 // Controls stay put; only the day list scrolls. It opens with TODAY at the top,
                 // and you scroll up for past days or down for future ones.

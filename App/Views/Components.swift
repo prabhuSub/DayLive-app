@@ -378,16 +378,16 @@ struct RootView: View {
 
     var body: some View {
         TabView(selection: $tab) {
-            TodayView()
+            TabRoot(title: "Today") { TodayView() }
                 .tabItem { Label { Text(AppTab.today.title) } icon: { Image("hd-tab-" + AppTab.today.icon).renderingMode(.template) } }
                 .tag(AppTab.today)
-            CalendarTabView()
+            TabRoot(title: "Calendar") { CalendarTabView() }
                 .tabItem { Label { Text(AppTab.calendar.title) } icon: { Image("hd-tab-" + AppTab.calendar.icon).renderingMode(.template) } }
                 .tag(AppTab.calendar)
-            StatsView()
+            TabRoot(title: "Stats") { StatsView() }
                 .tabItem { Label { Text(AppTab.stats.title) } icon: { Image("hd-tab-" + AppTab.stats.icon).renderingMode(.template) } }
                 .tag(AppTab.stats)
-            SettingsView()
+            TabRoot(title: "Settings") { SettingsView() }
                 .tabItem { Label { Text(AppTab.settings.title) } icon: { Image("hd-tab-" + AppTab.settings.icon).renderingMode(.template) } }
                 .tag(AppTab.settings)
         }
@@ -564,4 +564,30 @@ struct AddFab: View {
     }
 
     private func close() { withAnimation(.easeOut(duration: 0.2)) { menu = false } }
+}
+
+
+/// v14: each tab gets Apple's large title (like the TV app) that shrinks into the bar as you scroll,
+/// with your profile circle at the top right.
+struct TabRoot<Content: View>: View {
+    let title: String
+    @ViewBuilder var content: () -> Content
+    @State private var showProfile = false
+
+    var body: some View {
+        NavigationStack {
+            content()
+                .background(Theme.section)
+                .navigationTitle(title)
+                .navigationBarTitleDisplayMode(.large)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        ProfileButton { showProfile = true }
+                    }
+                }
+        }
+        .sheet(isPresented: $showProfile) {
+            ProfileSheet().presentationDetents([.large])
+        }
+    }
 }

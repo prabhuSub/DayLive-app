@@ -11,7 +11,6 @@ struct StatsView: View {
         let s = history.summary(range)
 
         VStack(spacing: 0) {
-            HeaderBar(section: "Stats")
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     VStack(alignment: .leading, spacing: 16) {

@@ -49,8 +49,8 @@ elif [[ -f .no-healthkit ]] && ! try_build CODE_SIGN_ENTITLEMENTS=Hyperday.entit
     rm -f "$LOG"; exit 1
   fi
 elif [[ ! -f .no-healthkit ]] && ! try_build; then
-  if grep -qiE "healthkit" "$LOG"; then
-    echo "› Signing refused HealthKit. Building without it (set your sleep target by hand)…"
+  if grep -qiE "healthkit|sign in with apple|applesignin" "$LOG"; then
+    echo "› Signing refused HealthKit / Sign in with Apple. Building without them…"
     touch .no-healthkit
     if ! try_build CODE_SIGN_ENTITLEMENTS=Hyperday.entitlements; then
       if grep -qiE "app group|application-groups|Personal development teams" "$LOG"; then
