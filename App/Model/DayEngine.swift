@@ -105,7 +105,7 @@ enum DayEngine {
         steps: [String: [Step]] = [:],
         now: Date
     ) -> DaySnapshot {
-        let blocks = apply(overrides, to: raw).sorted {
+        let blocks = apply(overrides, to: raw, now: now).sorted {
             $0.start == $1.start ? $0.duration > $1.duration : $0.start < $1.start
         }
 
@@ -161,7 +161,7 @@ enum DayEngine {
         )
     }
 
-    static func apply(_ overrides: [String: BlockOverride], to blocks: [Block]) -> [Block] {
+    static func apply(_ overrides: [String: BlockOverride], to blocks: [Block], now: Date = .now) -> [Block] {
         blocks.compactMap { original in
             var b = original
             if let o = overrides[b.id] {
@@ -172,6 +172,9 @@ enum DayEngine {
                 } else if let s = o.start {
                     b.start = min(b.start, s)
                 }
+                // Pause: the end moves later by every paused minute (including the one running now).
+                let paused = (o.pausedTotal ?? 0) + (o.pausedAt.map { max(0, now.timeIntervalSince($0)) } ?? 0)
+                if paused > 0 { b.end = b.end.addingTimeInterval(paused) }
                 if let e = o.end { b.end = min(b.end, e) }
             }
             return b.end > b.start ? b : nil

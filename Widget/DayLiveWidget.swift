@@ -60,6 +60,7 @@ struct DayLiveActivityWidget: Widget {
                         }
                         HStack(spacing: 12) {
                             DayBar(state: context.state)
+                            PauseButton(state: context.state)
                             BlockActionButton(state: context.state)
                         }
                     }

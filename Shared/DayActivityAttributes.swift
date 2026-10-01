@@ -51,6 +51,13 @@ struct DayActivityAttributes: ActivityAttributes {
         var driveSince: Date?
         var arriveAt: Date?
         var spareMinutes: Int?       // minutes before the next block starts (negative = late)
+        // v20: last-5-minutes heads-up (shown when the card goes stale at headsUpAt), pause, today score.
+        var headsUpAt: Date?
+        var headsUp: String?         // "Next: Standup 3:00 PM · Room 3B"
+        var paused: Bool?
+        var pausedLeft: Double?      // seconds left when paused (timer frozen)
+        var focusMinutes: Int?       // Work + Deep Work so far today
+        var canPause: Bool?          // your own planned block is running
         // v16: start of the live block, so the Island ring fills across this block.
         var currentStart: Date?
     }

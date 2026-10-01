@@ -172,6 +172,7 @@ final class BlockStore: ObservableObject {
 
     func finish(blockID: String, at date: Date) {
         var o = overrides[blockID] ?? BlockOverride()
+        if let p = o.pausedAt { o.pausedTotal = (o.pausedTotal ?? 0) + max(0, date.timeIntervalSince(p)); o.pausedAt = nil }
         o.end = date
         overrides[blockID] = o
         save()
@@ -182,6 +183,25 @@ final class BlockStore: ObservableObject {
         overrides[blockID] = BlockOverride(start: date, end: nil, started: true)
         save()
     }
+
+    /// v20 Pause / Resume from the Live Activity (your own planned blocks only).
+    func pause(blockID: String, at date: Date) {
+        var o = overrides[blockID] ?? BlockOverride()
+        guard o.pausedAt == nil else { return }
+        o.pausedAt = date
+        overrides[blockID] = o
+        save()
+    }
+
+    func resume(blockID: String, at date: Date) {
+        guard var o = overrides[blockID], let p = o.pausedAt else { return }
+        o.pausedTotal = (o.pausedTotal ?? 0) + max(0, date.timeIntervalSince(p))
+        o.pausedAt = nil
+        overrides[blockID] = o
+        save()
+    }
+
+    func isPaused(_ blockID: String) -> Bool { overrides[blockID]?.pausedAt != nil }
 
     // MARK: Persistence
 

@@ -123,6 +123,42 @@ final class LiveActivityManager: ObservableObject {
         return s
     }
 
+    /// v20: today score (top row), Pause, and the last-5-minutes heads-up.
+    /// The heads-up needs no wake-up: the card goes stale at `headsUpAt` and iOS redraws it in yellow.
+    private func decorate(_ s: inout DayActivityAttributes.ContentState, snap: DaySnapshot, now: Date) {
+        let cats = CategoryStore.shared
+        var focus: TimeInterval = 0
+        for b in snap.all {
+            let ids = cats.categories(for: b).map(\.id)
+            let focusShare = Double(ids.filter { $0 == "work" || $0 == "deepwork" }.count) / Double(max(ids.count, 1))
+            focus += max(0, min(b.end, now).timeIntervalSince(b.start)) * focusShare
+        }
+        s.focusMinutes = Int(focus / 60)
+        s.doneCount = HistoryStore.shared.entries(on: now).filter(\.done).count
+        s.totalCount = snap.all.count
+
+        guard let c = snap.current, !snap.overtime else { return }
+        if c.source == .plan {
+            s.canPause = true
+            if BlockStore.shared.isPaused(c.id) {
+                s.paused = true
+                s.pausedLeft = max(0, c.end.timeIntervalSince(now))
+                return
+            }
+        }
+        let warn = c.end.addingTimeInterval(-300)
+        // Only when nothing else changes the card first (an overlap ending, the next block starting).
+        if c.duration > 600, warn > now, warn <= (snap.nextBoundary ?? .distantFuture) {
+            s.headsUpAt = warn
+            if let n = snap.next {
+                let place = n.location.flatMap { $0.split(separator: "\n").first.map(String.init) }
+                s.headsUp = "Next: \(n.title) \(n.start.shortTime)" + (place.map { " · \($0)" } ?? "")
+            } else {
+                s.headsUp = "Wrap up · nothing after this"
+            }
+        }
+    }
+
     /// #9: while driving, show the arrival time and how it fits the next block.
     private func driveState(from snap: DaySnapshot, since: Date, now: Date) async -> DayActivityAttributes.ContentState {
         var s = snap.contentState()
@@ -158,10 +194,16 @@ final class LiveActivityManager: ObservableObject {
         let boundary = closed ? midnight
             : [snap.nextBoundary, DayCloseSettings.showOnLockScreen && closeAt > now ? closeAt : nil].compactMap { $0 }.min()
         var state = closed ? closedState(from: snap, now: now) : snap.contentState()
+        var staleAt = boundary
+        if !closed {
+            decorate(&state, snap: snap, now: now)
+            if state.paused == true { staleAt = nil }               // end keeps moving while paused
+            else if let h = state.headsUpAt { staleAt = [staleAt, h].compactMap { $0 }.min() }
+        }
         if !closed, let since = RealityStore.shared.driveStartedAt {
             state = await driveState(from: snap, since: since, now: now)
         }
-        let content = ActivityContent(state: state, staleDate: boundary)
+        let content = ActivityContent(state: state, staleDate: staleAt)
         let running = Self.liveActivities()
         let inForeground = UIApplication.shared.applicationState == .active
 
@@ -192,7 +234,7 @@ final class LiveActivityManager: ObservableObject {
         isRunning = !Self.liveActivities().isEmpty
         writeWidgetDay(snap, now: now)
         writeCalendarCounts(now: now)
-        BackgroundRefresh.schedule(at: boundary)
+        BackgroundRefresh.schedule(at: staleAt ?? boundary)
     }
 
     /// Hand today's blocks to the Home Screen widgets (only when they changed, to save reloads).

@@ -37,3 +37,33 @@ struct BlockActionIntent: LiveActivityIntent {
         return .result()
     }
 }
+
+/// v20: Pause / Resume on the Live Activity (your own planned blocks). Pausing moves the end later.
+struct PauseBlockIntent: LiveActivityIntent {
+    static var title: LocalizedStringResource = "Pause / Resume"
+    static var isDiscoverable: Bool = false
+
+    @Parameter(title: "Block ID")
+    var blockID: String
+
+    @Parameter(title: "Pause")
+    var pause: Bool
+
+    init() {}
+
+    init(blockID: String, pause: Bool) {
+        self.blockID = blockID
+        self.pause = pause
+    }
+
+    func perform() async throws -> some IntentResult {
+        #if !WIDGET_EXTENSION
+        let id = blockID, p = pause
+        await MainActor.run {
+            if p { BlockStore.shared.pause(blockID: id, at: .now) } else { BlockStore.shared.resume(blockID: id, at: .now) }
+        }
+        await LiveActivityManager.shared.refresh()
+        #endif
+        return .result()
+    }
+}

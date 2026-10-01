@@ -30,6 +30,9 @@ struct BlockOverride: Codable, Hashable {
     /// Tapped Start: the block runs from `start` for its planned length (can be later than planned),
     /// and keeps going as overtime until Done.
     var started: Bool? = nil
+    /// v20 Pause: while paused the block's end keeps moving later; on Resume the pause is banked.
+    var pausedAt: Date? = nil
+    var pausedTotal: TimeInterval? = nil
 }
 
 extension Date {

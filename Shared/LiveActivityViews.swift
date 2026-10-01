@@ -39,6 +39,24 @@ struct LockScreenCard: View {
     let state: DayActivityAttributes.ContentState
     var isStale: Bool = false
 
+    /// v20: the card goes stale 5 minutes before the end; iOS redraws it in heads-up yellow.
+    private var headsUp: Bool { isStale && state.headsUp != nil && state.paused != true }
+
+    /// "4/7 done · 3h 10m focus"
+    private var score: String? {
+        guard let total = state.totalCount, total > 0 else { return nil }
+        var t = "\(state.doneCount ?? 0)/\(total) done"
+        if let f = state.focusMinutes, f > 0 { t += " · " + (f >= 60 ? "\(f / 60)h \(f % 60)m" : "\(f)m") + " focus" }
+        return t
+    }
+
+    /// Bar tint: yellow in the last 5 minutes, grey while paused.
+    private var barState: DayActivityAttributes.ContentState {
+        var s = state
+        if state.paused == true { s.accentHex = "#8E8E93" } else if headsUp { s.accentHex = "#FFD60A" }
+        return s
+    }
+
     /// "Next · Standup at 10:30 PM" -> "Next: Standup 10:30 PM" (fits the top row)
     private var nextText: String {
         if isStale { return "Out of date · tap to refresh" }
@@ -94,21 +112,39 @@ struct LockScreenCard: View {
             HStack(spacing: 7) {
                 AppMark(size: 20)
                 TimerLabel(state: state, size: 16)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(headsUp ? DayLiveStyle.stepYellow : state.paused == true ? Color(white: 0.75) : .white)
                     .fixedSize()
                 Spacer(minLength: 6)
-                if isStale {
+                if isStale && !headsUp && state.paused != true {
                     Text(nextText)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.72))
                         .lineLimit(1)
+                } else if let score {
+                    Text(score)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.75))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
             }
 
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
                     CardTitle(state: state, size: 23)
-                    secondLine
+                    if state.paused == true {
+                        pill("Paused — the end moves later with it")
+                    } else if headsUp, let h = state.headsUp {
+                        Text(h)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(DayLiveStyle.stepYellow)
+                            .lineLimit(1)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(DayLiveStyle.stepYellow.opacity(0.2), in: Capsule())
+                    } else {
+                        secondLine
+                    }
                 }
                 Spacer(minLength: 0)
                 SourceIcon(source: state.source, size: 44, tint: state.source == .free ? nil : state.accentColor, iconName: state.iconName)
@@ -116,7 +152,8 @@ struct LockScreenCard: View {
             .padding(.top, 2)
 
             HStack(spacing: 12) {
-                DayBar(state: state, height: 6)
+                DayBar(state: barState, height: 6)
+                PauseButton(state: state)
                 BlockActionButton(state: state)   // Done / Step n/N are always yellow, never the category color
             }
             .padding(.top, 6)
@@ -269,6 +306,12 @@ struct TimerLabel: View {
     let state: DayActivityAttributes.ContentState
     var size: CGFloat = 14
 
+    /// 1930 s -> "32:10", 4210 s -> "1:10:10"
+    static func clock(_ t: Double) -> String {
+        let s = Int(t.rounded()), h = s / 3600, m = (s % 3600) / 60, sec = s % 60
+        return h > 0 ? String(format: "%d:%02d:%02d", h, m, sec) : String(format: "%d:%02d", m, sec)
+    }
+
     /// Live timer text stretches to fill its box, so size the box with an invisible sample
     /// ("8:88:88" or "88:88") in the same font, and lay the timer over it.
     private func timer(_ range: ClosedRange<Date>, down: Bool) -> some View {
@@ -283,7 +326,10 @@ struct TimerLabel: View {
 
     var body: some View {
         Group {
-            if let over = state.overSince {
+            if state.paused == true, let left = state.pausedLeft {
+                // v20: frozen while paused.
+                Text("Paused · \(Self.clock(left)) left")
+            } else if let over = state.overSince {
                 HStack(spacing: 0) {
                     Text("+")
                     timer(over...over.addingTimeInterval(24 * 3600), down: false)
@@ -327,6 +373,39 @@ struct DayBar: View {
             .frame(maxWidth: .infinity)
         } else {
             SegmentBar(segments: state.segments, accent: state.accentColor, height: height)
+        }
+    }
+}
+
+/// v20: Pause (grey circle) while your own block runs; white "Resume" while paused.
+struct PauseButton: View {
+    let state: DayActivityAttributes.ContentState
+
+    var body: some View {
+        if state.canPause == true, let id = state.actionBlockID {
+            if state.paused == true {
+                Button(intent: PauseBlockIntent(blockID: id, pause: false)) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "play.fill").font(.system(size: 12, weight: .bold))
+                        Text("Resume").font(.system(size: 14, weight: .bold))
+                    }
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 14)
+                    .frame(height: 36)
+                    .background(Color.white, in: Capsule())
+                }
+                .buttonStyle(.plain)
+            } else {
+                Button(intent: PauseBlockIntent(blockID: id, pause: true)) {
+                    Image(systemName: "pause.fill")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 36, height: 36)
+                        .background(Color.white.opacity(0.18), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Pause")
+            }
         }
     }
 }
@@ -596,10 +675,13 @@ enum IslandPhase {
     case over(Date)                   // counts up from the planned end (yellow)
     case free(ClosedRange<Date>)      // counts down to the next block
     case upNext(Date)                 // nothing running, next block later: "in 8:05"
+    case paused(Double)               // v20: frozen, seconds left
     case idle
 
     init(_ s: DayActivityAttributes.ContentState, now: Date = .now) {
-        if let over = s.overSince {
+        if s.paused == true, let left = s.pausedLeft {
+            self = .paused(left)
+        } else if let over = s.overSince {
             self = .over(over)
         } else if let end = s.currentEnd, end > now {
             self = .running((s.currentStart.map { min($0, now) } ?? now)...end)
@@ -629,7 +711,7 @@ struct IslandRingIcon: View {
                     .tint(ringColor(phase))
             case .over:
                 Circle().stroke(Self.overYellow, lineWidth: 2.5)
-            case .upNext, .idle:
+            case .upNext, .idle, .paused:
                 Circle().stroke(.white.opacity(0.22), lineWidth: 2.5)
             }
             glyph(phase)
@@ -641,7 +723,7 @@ struct IslandRingIcon: View {
         switch phase {
         case .free:
             Text("F").font(.system(size: size * 0.38, weight: .black)).foregroundStyle(ringColor(phase))
-        case .upNext, .idle:
+        case .upNext, .idle, .paused:
             HDIcon(state.iconName ?? "event", size: size * 0.48).foregroundStyle(.white.opacity(0.7))
         default:
             HDIcon(state.iconName ?? "edit", size: size * 0.48).foregroundStyle(ringColor(phase))
@@ -681,6 +763,8 @@ struct IslandTimer: View {
                     sized(Date.now...next, down: true)
                 }
                 .foregroundStyle(.white.opacity(0.85))
+            case .paused(let left):
+                Text(TimerLabel.clock(left)).foregroundStyle(Color(white: 0.7))
             case .idle:
                 DayRing(progress: state.dayProgress, accent: state.accentColor).frame(width: 20, height: 20)
             }
