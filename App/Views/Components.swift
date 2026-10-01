@@ -369,8 +369,7 @@ struct AppearanceButton: View {
         } label: {
             HDIcon(current == .system ? "auto" : current == .light ? "sun" : "moon", size: 16)
                 .foregroundStyle(Theme.text)
-                .frame(width: 32, height: 32)
-                .background(Circle().fill(Theme.border))
+                .frame(width: 32, height: 32)   // no background: just the icon
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
