@@ -59,7 +59,8 @@ import json, sys
 devices = json.load(open(sys.argv[1]))["result"]["devices"]
 phones = [d for d in devices
           if d.get("hardwareProperties", {}).get("platform") == "iOS"
-          and d.get("hardwareProperties", {}).get("reality") == "physical"   # skip simulators
+          and d.get("hardwareProperties", {}).get("reality") != "virtual"    # skip simulators
+          and "simulator" not in str(d.get("hardwareProperties", {}).get("platform", "")).lower()
           and d.get("connectionProperties", {}).get("pairingState") == "paired"
           and d.get("connectionProperties", {}).get("tunnelState") != "unavailable"]
 # Prefer a phone that's connected right now (cable or Wi-Fi) over one that's merely paired.
@@ -70,6 +71,8 @@ PY
 rm -f "$JSON"
 if [[ -z "$DEVICE" ]]; then
   echo "✗ No iPhone found. Unlock it and connect by cable or the same Wi-Fi, then try again."
+  echo "  Devices Xcode can see:"
+  xcrun devicectl list devices 2>/dev/null | sed 's/^/    /' || true
   exit 1
 fi
 
