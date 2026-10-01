@@ -356,6 +356,29 @@ struct BlockRow: View {
     }
 }
 
+// MARK: - v17 appearance button (next to the profile circle)
+
+/// Same grey circle as the profile. Tap cycles System → Light → Dark; the icon shows the current mode.
+struct AppearanceButton: View {
+    @AppStorage("appearance") private var appearance = Appearance.system.rawValue
+    private var current: Appearance { Appearance(rawValue: appearance) ?? .system }
+
+    var body: some View {
+        Button {
+            appearance = (current == .system ? Appearance.light : current == .light ? .dark : .system).rawValue
+        } label: {
+            HDIcon(current == .system ? "auto" : current == .light ? "sun" : "moon", size: 16)
+                .foregroundStyle(Theme.text)
+                .frame(width: 32, height: 32)
+                .background(Circle().fill(Theme.border))
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .sensoryFeedback(.selection, trigger: appearance)
+        .accessibilityLabel("Appearance: \(current.label). Tap to change.")
+    }
+}
+
 // MARK: - v16 timer pills
 
 enum RowPill {
@@ -686,7 +709,10 @@ struct TabRoot<Content: View>: View {
                     }
                     .noGlass()
                     ToolbarItem(placement: .topBarTrailing) {
-                        ProfileButton { showProfile = true }
+                        HStack(spacing: 8) {
+                            AppearanceButton()
+                            ProfileButton { showProfile = true }
+                        }
                     }
                     .noGlass()
                 }
