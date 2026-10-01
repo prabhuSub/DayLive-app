@@ -177,7 +177,7 @@ struct HeatWidgetView: View {
                 fullGrid(d, weeks: 26, width: geo.size.width, gap: 2.6)
                 Divider()
                 workload(width: geo.size.width)
-                Spacer(minLength: 0)
+                    .frame(maxHeight: .infinity)   // bars grow to fill the space above the numbers
                 Divider()
                 HStack(spacing: 0) {
                     stat("Streak", "\(n.streak)d", n.streakTrend, "\(n.streakDelta)")
@@ -198,7 +198,6 @@ struct HeatWidgetView: View {
         let maxH = max(4, vals.map { max($0[0], $0[1]) }.max() ?? 4)
         let planned = vals.reduce(0) { $0 + $1[0] }
         let done = vals.reduce(0) { $0 + $1[1] }
-        let barH: CGFloat = 46
         let green = Color(hex: "#30D158")
         return VStack(alignment: .leading, spacing: 5) {
             HStack {
@@ -209,6 +208,9 @@ struct HeatWidgetView: View {
                     .font(.system(size: 10.5))
                     .foregroundStyle(.secondary)
             }
+            GeometryReader { g in
+            // Height left for the bars after the hours label (on top) and the day pill (below).
+            let barH = max(30, g.size.height - 12 - 17 - 8)
             HStack(alignment: .bottom, spacing: 6) {
                 ForEach(days.indices, id: \.self) { i in
                     let isToday = Calendar.current.isDate(days[i], inSameDayAs: entry.date)
@@ -231,6 +233,8 @@ struct HeatWidgetView: View {
                     }
                     .frame(maxWidth: .infinity)
                 }
+            }
+            .frame(maxHeight: .infinity, alignment: .bottom)
             }
         }
     }
