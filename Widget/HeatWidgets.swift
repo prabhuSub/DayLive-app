@@ -1,26 +1,38 @@
 import SwiftUI
 import WidgetKit
 
-// GitHub-style "blocks done" heatmap widgets: Small (7 weeks), Medium (5 months),
-// Large (12 months in two rows), Lock Screen rectangular (16 weeks, white).
+// GitHub-style "blocks done" heatmap widgets (v8): full-width grids with equal margins,
+// numbers colored against last week, and on Large a "today + next" row.
 
 struct HeatEntry: TimelineEntry {
     let date: Date
     let data: HeatData?
+    var day: WidgetDay? = nil
 }
 
 struct HeatProvider: TimelineProvider {
-    func placeholder(in context: Context) -> HeatEntry { HeatEntry(date: .now, data: .sample) }
+    func placeholder(in context: Context) -> HeatEntry { HeatEntry(date: .now, data: .sample, day: .sample) }
 
     func getSnapshot(in context: Context, completion: @escaping (HeatEntry) -> Void) {
-        completion(HeatEntry(date: .now, data: WidgetShared.loadHeat() ?? (context.isPreview ? .sample : nil)))
+        let heat = WidgetShared.loadHeat() ?? (context.isPreview ? .sample : nil)
+        completion(HeatEntry(date: .now, data: heat, day: WidgetShared.load() ?? (context.isPreview ? .sample : nil)))
     }
 
-    /// The app reloads this when a block is done; otherwise refresh just after midnight for the new day.
+    /// Redraw at every block start/end today (for "Next"), and just after midnight for the new day.
+    /// The app also reloads this whenever a block is done.
     func getTimeline(in context: Context, completion: @escaping (Timeline<HeatEntry>) -> Void) {
+        let now = Date.now
         let cal = Calendar.current
-        let midnight = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: .now))?.addingTimeInterval(60) ?? .now
-        completion(Timeline(entries: [HeatEntry(date: .now, data: WidgetShared.loadHeat())], policy: .after(midnight)))
+        let heat = WidgetShared.loadHeat()
+        let day = WidgetShared.load()
+        var dates: Set<Date> = [now]
+        for b in day?.todays(now) ?? [] {
+            if b.start > now { dates.insert(b.start) }
+            if b.end > now { dates.insert(b.end) }
+        }
+        let midnight = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: now))?.addingTimeInterval(60) ?? now
+        let entries = dates.filter { $0 < midnight }.sorted().prefix(40).map { HeatEntry(date: $0, data: heat, day: day) }
+        completion(Timeline(entries: Array(entries), policy: .after(midnight)))
     }
 }
 
@@ -34,6 +46,46 @@ struct HyperdayHeatWidget: Widget {
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular])
     }
 }
+
+// MARK: - Compared with last week
+
+private enum Trend {
+    case up, down, same
+
+    var color: Color {
+        switch self {
+        case .up: return Color(hex: "#30D158")
+        case .down: return Color(hex: "#FF453A")
+        case .same: return Color(hex: "#8E8E93")
+        }
+    }
+
+    var arrow: String { self == .up ? "↑" : self == .down ? "↓" : "=" }
+
+    static func of(_ now: Int, vs before: Int) -> Trend { now > before ? .up : now < before ? .down : .same }
+}
+
+private struct Numbers {
+    let streak: Int, streakDelta: Int, streakTrend: Trend
+    let best: Int, bestIsNew: Bool
+    let week: Int, weekDelta: Int, weekTrend: Trend
+
+    init(_ d: HeatData, now: Date) {
+        let lastWeek = Calendar.current.date(byAdding: .day, value: -7, to: now) ?? now
+        streak = d.streak(now: now)
+        let oldStreak = d.streak(now: lastWeek)
+        streakDelta = abs(streak - oldStreak)
+        streakTrend = Trend.of(streak, vs: oldStreak)
+        best = d.best(now: now)
+        bestIsNew = streak > 0 && streak >= best
+        week = d.thisWeek(now: now)
+        let oldWeek = d.thisWeek(now: lastWeek)   // last week, up to the same weekday
+        weekDelta = abs(week - oldWeek)
+        weekTrend = Trend.of(week, vs: oldWeek)
+    }
+}
+
+// MARK: - Views
 
 struct HeatWidgetView: View {
     @Environment(\.widgetFamily) private var family
@@ -56,70 +108,121 @@ struct HeatWidgetView: View {
 
     private func caps(_ s: String) -> some View {
         Text(s.uppercased())
-            .font(.system(size: 9, weight: .bold))
-            .kerning(1.1)
+            .font(.system(size: 9.5, weight: .heavy))
+            .kerning(1.3)
             .foregroundStyle(.secondary)
             .lineLimit(1)
     }
 
+    /// A grid that fills the given width exactly: weeks fixed, square size computed.
+    private func fullGrid(_ d: HeatData, weeks: Int, width: CGFloat, gap: CGFloat,
+                          offset: Int = 0, months: Bool = true) -> some View {
+        let cell = max(3, (width - gap * CGFloat(weeks - 1)) / CGFloat(weeks))
+        return HeatGrid(data: d, weeks: weeks, endWeekOffset: offset, cell: cell, gap: gap,
+                        showMonths: months, now: entry.date)
+    }
+
+    private func trendText(_ value: String, _ trend: Trend, _ delta: String) -> Text {
+        Text(value).foregroundColor(trend.color) + Text(" \(trend.arrow)\(delta.isEmpty ? "" : " " + delta)").foregroundColor(trend.color)
+    }
+
+    // Small: 9 weeks, edge to edge, colored streak.
     private func small(_ d: HeatData) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        let n = Numbers(d, now: entry.date)
+        return VStack(alignment: .leading, spacing: 8) {
             HStack {
                 caps("Streak")
                 Spacer()
-                Text("\(d.streak()) days")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(Color(hex: "#1F8A3B"))
+                trendText("\(n.streak)d", n.streakTrend, "")
+                    .font(.system(size: 13, weight: .heavy))
             }
-            Spacer(minLength: 0)
-            HeatGrid(data: d, weeks: 7, cell: 13, gap: 3, showMonths: false, now: entry.date)
-            Spacer(minLength: 0)
+            GeometryReader { geo in
+                fullGrid(d, weeks: 9, width: geo.size.width, gap: 2.6, months: false)
+            }
         }
     }
 
+    // Medium: 6 months, edge to edge, colored streak + this week.
     private func medium(_ d: HeatData) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                caps("Blocks done · 5 months")
+        let n = Numbers(d, now: entry.date)
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                caps("6 months")
                 Spacer()
-                Text("\(d.streak())-day streak")
-                    .font(.system(size: 11, weight: .semibold))
+                (trendText("\(n.streak)d streak", n.streakTrend, "")
+                 + Text("  ·  ").foregroundColor(.secondary)
+                 + trendText("\(n.week) this wk", n.weekTrend, ""))
+                    .font(.system(size: 11, weight: .bold))
+                    .lineLimit(1)
             }
-            HeatGrid(data: d, weeks: 22, cell: 10.5, gap: 3, now: entry.date)
-            Spacer(minLength: 0)
+            GeometryReader { geo in
+                fullGrid(d, weeks: 26, width: geo.size.width, gap: 2.6)
+            }
         }
     }
 
+    // Large: 12 months in two full-width rows, today + next, numbers vs last week.
     private func large(_ d: HeatData) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                caps("Blocks done · 12 months")
-                Spacer()
-                Text("\(d.total()) total").font(.system(size: 11)).foregroundStyle(.secondary)
-            }
-            HeatGrid(data: d, weeks: 27, endWeekOffset: 26, cell: 8.5, gap: 2.5, now: entry.date)
-            HeatGrid(data: d, weeks: 26, cell: 8.5, gap: 2.5, now: entry.date)
-            Spacer(minLength: 0)
-            Divider()
-            HStack {
-                stat("Streak", "\(d.streak())d")
-                stat("Best", "\(d.best())d")
-                stat("This week", "\(d.thisWeek())")
+        let n = Numbers(d, now: entry.date)
+        let day = entry.day ?? WidgetDay(day: entry.date, blocks: [])
+        let todays = day.todays(entry.date)
+        let doneToday = d.count(entry.date)
+        let next = day.upcoming(at: entry.date, limit: 1).first
+        return GeometryReader { geo in
+            VStack(alignment: .leading, spacing: 7) {
+                HStack {
+                    caps("Blocks done · 12 months")
+                    Spacer()
+                    Text("\(d.total()) total").font(.system(size: 11)).foregroundStyle(.secondary)
+                }
+                fullGrid(d, weeks: 27, width: geo.size.width, gap: 2.4, offset: 26)
+                fullGrid(d, weeks: 26, width: geo.size.width * 26 / 27 - 2.4 / 27, gap: 2.4)
+                HStack(spacing: 8) {
+                    (Text("\(doneToday) of \(max(todays.count, doneToday))").bold().foregroundColor(Color(hex: "#30D158"))
+                     + Text(" done today"))
+                        .font(.system(size: 12))
+                        .lineLimit(1)
+                        .layoutPriority(1)
+                    Spacer(minLength: 4)
+                    if let next {
+                        (Text("Next ").foregroundColor(.secondary) + Text(next.title).bold()
+                         + Text(" \(next.start.formatted(date: .omitted, time: .shortened))").foregroundColor(.secondary))
+                            .font(.system(size: 12))
+                            .lineLimit(1)
+                    } else {
+                        Text("Nothing else today").font(.system(size: 12)).foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.06)))
+                Spacer(minLength: 0)
+                Divider()
+                HStack(spacing: 0) {
+                    stat("Streak", "\(n.streak)d", n.streakTrend, "\(n.streakDelta)")
+                    stat("Best", "\(n.best)d", n.bestIsNew ? .up : .same, n.bestIsNew ? "new" : "")
+                    stat("This week", "\(n.week)", n.weekTrend, "\(n.weekDelta)")
+                }
             }
         }
     }
 
-    private func stat(_ label: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
+    private func stat(_ label: String, _ value: String, _ trend: Trend, _ delta: String) -> some View {
+        VStack(spacing: 1) {
             caps(label)
-            Text(value).font(.system(size: 20, weight: .bold))
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Text(value).font(.system(size: 24, weight: .heavy))
+                Text("\(trend.arrow)\(delta.isEmpty || delta == "0" ? "" : " " + delta)")
+                    .font(.system(size: 11, weight: .bold))
+            }
+            .foregroundStyle(trend.color)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity)
     }
 
     private func lock(_ d: HeatData) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text("\(d.streak())-DAY STREAK")
+            Text("\(d.streak(now: entry.date))-DAY STREAK")
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(.secondary)
             HeatGrid(data: d, weeks: 16, cell: 5.6, gap: 1.8, style: .white, showMonths: false, now: entry.date)
