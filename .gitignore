@@ -24,3 +24,4 @@ server/**/__pycache__/
 server/.venv/
 *.db
 *.p8
+.no-healthkit

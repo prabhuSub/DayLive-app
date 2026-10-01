@@ -38,6 +38,9 @@ struct DayLiveActivityWidget: Widget {
                         .frame(maxHeight: .infinity, alignment: .center)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
+                    if context.state.closed == true {
+                        DayClosedCard(state: context.state, compact: true)
+                    } else {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack(alignment: .center, spacing: 12) {
                             VStack(alignment: .leading, spacing: 2) {
@@ -61,6 +64,7 @@ struct DayLiveActivityWidget: Widget {
                     }
                     .padding(.horizontal, 6)
                     .padding(.top, 4)
+                    }
                 }
             } compactLeading: {
                 SourceIcon(source: context.state.source, size: 22,

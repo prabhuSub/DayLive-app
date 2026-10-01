@@ -19,6 +19,9 @@
 - **Blocks-done heatmap** (GitHub-style): first card on Stats (12 months, tap a day for its blocks, Open in Calendar), plus widgets: Small (7 weeks), Medium (5 months), Large (12 months), Lock Screen (16 weeks).
 - **App icon: Now Line**, and Hyperday's own line icons across the app. Categories can pick an icon.
 
+- **Day Close** (v9): at your close time the Lock Screen card becomes "Day closed" with what you finished and a Review link; a 30-second review moves unfinished blocks to tomorrow or drops them.
+- **Tomorrow pre-flight**: tomorrow's first block, leave-by (office days) and bed-by from your sleep target (Health average optional).
+
 ### Changed
 - Done is green, Step is yellow, Start now grey.
 - Calendar tab always opens on today; the agenda is one continuous list (90 days back and ahead). Tasks are kept for 2 years.

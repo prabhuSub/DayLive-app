@@ -391,9 +391,111 @@ struct ActivityFamilyCard: View {
     var isStale: Bool = false
 
     var body: some View {
-        switch family {
-        case .small: WatchCard(state: state, isStale: isStale)
-        default: LockScreenCard(state: state, isStale: isStale)
+        if state.closed == true {
+            DayClosedCard(state: state, compact: family == .small)
+        } else {
+            switch family {
+            case .small: WatchCard(state: state, isStale: isStale)
+            default: LockScreenCard(state: state, isStale: isStale)
+            }
         }
+    }
+}
+
+// MARK: - Day Close (v9)
+
+/// After your close time: done today, a Review link, and tomorrow's pre-flight.
+struct DayClosedCard: View {
+    let state: DayActivityAttributes.ContentState
+    var compact = false   // Dynamic Island / Watch
+
+    private var done: Int { state.doneCount ?? 0 }
+    private var total: Int { max(state.totalCount ?? 0, done) }
+
+    private func time(_ d: Date?) -> String {
+        d.map { $0.formatted(date: .omitted, time: .shortened) } ?? "—"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: compact ? 5 : 6) {
+            if !compact {
+                HStack(spacing: 7) {
+                    AppMark(size: 20)
+                    Text("Day closed").font(.system(size: 14, weight: .bold))
+                    Spacer(minLength: 4)
+                    Text(Date.now.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+            }
+            HStack(alignment: .center, spacing: 10) {
+                (Text("\(done)").foregroundColor(DayLiveStyle.doneGreen) + Text(" of \(total) done"))
+                    .font(.system(size: compact ? 19 : 22, weight: .heavy))
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                if let n = state.reviewCount, n > 0, let url = URL(string: "hyperday://close") {
+                    Link(destination: url) {
+                        Text("Review \(n)")
+                            .font(.system(size: 13, weight: .bold))
+                            .padding(.horizontal, 12)
+                            .frame(height: 28)
+                            .background(Color.white.opacity(0.2), in: Capsule())
+                    }
+                } else {
+                    HStack(spacing: 4) {
+                        HDIcon("done", size: 13)
+                        Text("Closed")
+                    }
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(DayLiveStyle.doneGreen)
+                }
+            }
+            if total > 0 {
+                HStack(spacing: 3) {
+                    ForEach(0..<min(total, 16), id: \.self) { i in
+                        Capsule()
+                            .fill(i < done ? DayLiveStyle.doneGreen : DayLiveStyle.stepYellow)
+                            .frame(height: 5)
+                    }
+                }
+            }
+            Rectangle().fill(.white.opacity(0.15)).frame(height: 1).padding(.vertical, 1)
+            if let first = state.tomorrowFirst {
+                HStack(alignment: .top, spacing: 8) {
+                    stat("Tomorrow", time(first), .white)
+                    if state.leaveBy != nil { stat("Leave by", time(state.leaveBy), .white) }
+                    stat("Bed by", time(state.bedBy),
+                         (state.bedBy ?? .distantFuture) > .now ? DayLiveStyle.doneGreen : Color(red: 1, green: 0.27, blue: 0.23))
+                }
+                if !compact, let title = state.tomorrowTitle {
+                    Text("First up: \(title)")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.white.opacity(0.7))
+                        .lineLimit(1)
+                }
+            } else {
+                Text("Nothing planned tomorrow")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.75))
+            }
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, compact ? 6 : 16)
+        .padding(.vertical, compact ? 4 : 12)
+    }
+
+    private func stat(_ label: String, _ value: String, _ color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(label.uppercased())
+                .font(.system(size: 9, weight: .heavy))
+                .kerning(1)
+                .foregroundStyle(.white.opacity(0.6))
+            Text(value)
+                .font(.system(size: compact ? 14 : 16, weight: .heavy).monospacedDigit())
+                .foregroundStyle(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

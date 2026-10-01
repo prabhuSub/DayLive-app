@@ -37,6 +37,15 @@ struct DayActivityAttributes: ActivityAttributes {
         var nextTitle: String?       // free time: "Standup"
         var overSince: Date?         // started block past its planned end: counts up from here
         var iconName: String?        // category icon of the live block ("deepwork")
+        // Day Close (v9): after your close time the card becomes "Day closed".
+        var closed: Bool?
+        var doneCount: Int?
+        var totalCount: Int?
+        var tomorrowFirst: Date?
+        var tomorrowTitle: String?
+        var leaveBy: Date?
+        var bedBy: Date?
+        var reviewCount: Int?        // unfinished blocks still to review (0 after "Close the day")
     }
 
     var dayStart: Date

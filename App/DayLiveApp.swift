@@ -11,6 +11,7 @@ struct DayLiveApp: App {
     @StateObject private var categories = CategoryStore.shared
     @StateObject private var history = HistoryStore.shared
     @StateObject private var recap = RecapCenter.shared
+    @State private var showCloseDay = false
 
     init() {
         // Must be set before launch finishes so a tap on the Sunday recap opens it.
@@ -32,6 +33,14 @@ struct DayLiveApp: App {
                 .environmentObject(categories)
                 .environmentObject(history)
                 .fullScreenCover(isPresented: $recap.showing) { WeeklyRecapView() }
+                // "Day closed · Review" on the Lock Screen opens hyperday://close
+                .onOpenURL { url in if url.host == "close" { showCloseDay = true } }
+                .sheet(isPresented: $showCloseDay) {
+                    CloseDaySheet()
+                        .environmentObject(store)
+                        .environmentObject(history)
+                        .presentationDetents([.large])
+                }
                 .onReceive(NotificationCenter.default.publisher(for: .EKEventStoreChanged)) { _ in
                     Task { await LiveActivityManager.shared.refresh() }
                 }

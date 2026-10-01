@@ -32,11 +32,16 @@ targets:
         NSSupportsLiveActivities: true
         NSCalendarsFullAccessUsageDescription: "Hyperday reads your calendar events to show them in your day, calendar and Live Activity. They never leave your iPhone."
         NSPhotoLibraryAddUsageDescription: "Hyperday saves your weekly recap image to Photos when you tap Save image."
+        NSHealthShareUsageDescription: "Hyperday reads your sleep to suggest a bedtime for tomorrow. It stays on your iPhone."
+        CFBundleURLTypes:
+          - CFBundleURLName: com.prabhu.daylive
+            CFBundleURLSchemes: [hyperday]
         UIBackgroundModes: [fetch]
         BGTaskSchedulerPermittedIdentifiers: [com.prabhu.daylive.refresh]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.prabhu.daylive
+        CODE_SIGN_ENTITLEMENTS: App/Hyperday.entitlements   # App Group + HealthKit (deploy.sh falls back if refused)
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
       - target: DayLiveWidget
@@ -61,4 +66,5 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.prabhu.daylive.widget
+        CODE_SIGN_ENTITLEMENTS: Hyperday.entitlements       # App Group
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) WIDGET_EXTENSION"

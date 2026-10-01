@@ -52,6 +52,7 @@ struct SettingsView: View {
 
                     rulesCard
 
+                    DayCloseSettingsCard()
                     focusCard
 
                     VStack(alignment: .leading, spacing: 10) {

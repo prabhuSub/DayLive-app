@@ -86,14 +86,60 @@ final class LiveActivityManager: ObservableObject {
         isRefreshing = false
     }
 
+    /// v9 Day Close: unfinished blocks you planned today (calendar events can't be carried over).
+    func notDoneToday(now: Date = .now) -> [Block] {
+        let done = Set(HistoryStore.shared.entries(on: now).filter(\.done).map(\.id))
+        let mine = DayEngine.apply(BlockStore.shared.overrides, to: BlockStore.shared.planBlocks(on: now))
+        return mine.filter { !done.contains($0.id) }.sorted { $0.start < $1.start }
+    }
+
+    /// The "Day closed" card: done today, what's left to review, and tomorrow's pre-flight.
+    private func closedState(from snap: DaySnapshot, now: Date) -> DayActivityAttributes.ContentState {
+        var s = snap.contentState()
+        let entries = HistoryStore.shared.entries(on: now)
+        let pre = Preflight.forTomorrow(after: now)
+        let reviewed = DayCloseSettings.closedDays.contains(HeatData.key(now))
+        s.closed = true
+        s.title = "Day closed"
+        s.label = "Day closed"
+        s.also = nil
+        s.source = .free
+        s.action = nil
+        s.actionBlockID = nil
+        s.currentEnd = nil
+        s.overSince = nil
+        s.freeStart = nil
+        s.nextStart = nil
+        s.nextTitle = nil
+        s.accentHex = nil
+        s.iconName = nil
+        s.doneCount = entries.filter(\.done).count
+        s.totalCount = max(snap.all.count, entries.count)
+        s.reviewCount = reviewed ? 0 : notDoneToday(now: now).count
+        s.tomorrowFirst = pre.first?.start
+        s.tomorrowTitle = pre.first?.title
+        s.leaveBy = pre.leaveBy
+        s.bedBy = pre.bedBy
+        return s
+    }
+
     private func performRefresh() async {
         let now = Date.now
         let snap = snapshot(now: now)
-        let content = ActivityContent(state: snap.contentState(), staleDate: snap.nextBoundary)
+        HistoryStore.shared.recordToday(raw: allTodayBlocks(now: now), now: now)
+        let closed = DayCloseSettings.isClosed(at: now)
+        let cal = Calendar.current
+        let midnight = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: now)) ?? now
+        let closeAt = DayCloseSettings.closeTime(on: now)
+        // Wake up at the close time too, so the card switches to "Day closed" on time.
+        let boundary = closed ? midnight
+            : [snap.nextBoundary, DayCloseSettings.showOnLockScreen && closeAt > now ? closeAt : nil].compactMap { $0 }.min()
+        let state = closed ? closedState(from: snap, now: now) : snap.contentState()
+        let content = ActivityContent(state: state, staleDate: boundary)
         let running = Self.liveActivities()
         let inForeground = UIApplication.shared.applicationState == .active
 
-        let dayIsOver = !snap.all.isEmpty && !snap.hasAnythingLeft
+        let dayIsOver = !closed && !snap.all.isEmpty && !snap.hasAnythingLeft
         let force = forceStart
         forceStart = false
 
@@ -111,16 +157,15 @@ final class LiveActivityManager: ObservableObject {
             } else {
                 await activity.update(content)
             }
-        } else if force || (autoStart && snap.hasAnythingLeft) {
+        } else if force || (autoStart && (snap.hasAnythingLeft || closed)) {
             // Auto-start only when there's something to show; "Go Live" always starts.
             await Self.endAll()
             request(content)
         }
 
         isRunning = !Self.liveActivities().isEmpty
-        HistoryStore.shared.recordToday(raw: allTodayBlocks(now: now), now: now)
         writeWidgetDay(snap, now: now)
-        BackgroundRefresh.schedule(at: snap.nextBoundary)
+        BackgroundRefresh.schedule(at: boundary)
     }
 
     /// Hand today's blocks to the Home Screen widgets (only when they changed, to save reloads).

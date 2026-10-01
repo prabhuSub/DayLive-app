@@ -24,8 +24,8 @@ echo "› Team $DEVELOPMENT_TEAM"
 echo "› Generating Xcode project…"
 xcodegen generate --quiet
 
-# Home Screen widgets share data through an App Group, which needs the paid Apple Developer Program.
-# Try with it first; if signing refuses (free Apple ID), build without it and remember that in .no-app-group.
+# Entitlements: the app asks for an App Group (widgets) and HealthKit (sleep for Day Close).
+# If signing refuses one, fall back and remember it: .no-healthkit, then .no-app-group.
 build() {
   xcodebuild -project DayLive.xcodeproj -scheme DayLive -configuration Debug \
     -destination 'generic/platform=iOS' -derivedDataPath build \
@@ -36,13 +36,34 @@ build() {
 
 echo "› Building…"
 LOG=$(mktemp)
+try_build() { build "$@" 2>&1 | tee "$LOG"; }   # pipefail: returns xcodebuild's status
+
 if [[ -f .no-app-group || -n "${NO_APP_GROUP:-}" ]]; then
-  build
-elif ! build CODE_SIGN_ENTITLEMENTS=Hyperday.entitlements 2>&1 | tee "$LOG"; then   # pipefail: xcodebuild's status
+  try_build CODE_SIGN_ENTITLEMENTS= || { rm -f "$LOG"; exit 1; }
+elif [[ -f .no-healthkit ]] && ! try_build CODE_SIGN_ENTITLEMENTS=Hyperday.entitlements; then
   if grep -qiE "app group|application-groups|Personal development teams" "$LOG"; then
-    echo "› Your Apple ID can't use App Groups (free account). Building without Home Screen widgets…"
+    echo "› Your Apple ID can't use App Groups. Building without Home Screen widgets…"
     touch .no-app-group
-    build
+    try_build CODE_SIGN_ENTITLEMENTS= || { rm -f "$LOG"; exit 1; }
+  else
+    rm -f "$LOG"; exit 1
+  fi
+elif [[ ! -f .no-healthkit ]] && ! try_build; then
+  if grep -qiE "healthkit" "$LOG"; then
+    echo "› Signing refused HealthKit. Building without it (set your sleep target by hand)…"
+    touch .no-healthkit
+    if ! try_build CODE_SIGN_ENTITLEMENTS=Hyperday.entitlements; then
+      if grep -qiE "app group|application-groups|Personal development teams" "$LOG"; then
+        touch .no-app-group
+        try_build CODE_SIGN_ENTITLEMENTS= || { rm -f "$LOG"; exit 1; }
+      else
+        rm -f "$LOG"; exit 1
+      fi
+    fi
+  elif grep -qiE "app group|application-groups|Personal development teams" "$LOG"; then
+    echo "› Your Apple ID can't use App Groups. Building without widgets or HealthKit…"
+    touch .no-app-group
+    try_build CODE_SIGN_ENTITLEMENTS= || { rm -f "$LOG"; exit 1; }
   else
     rm -f "$LOG"; exit 1
   fi

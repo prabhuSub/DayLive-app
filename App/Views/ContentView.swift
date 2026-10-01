@@ -9,6 +9,7 @@ struct TodayView: View {
     @EnvironmentObject private var categories: CategoryStore
 
     @State private var showingAdd = false
+    @State private var showingClose = false
     @State private var editing: Block?
     @State private var now = Date.now
     @State private var calendarGranted = CalendarService.shared.hasAccess
@@ -49,6 +50,9 @@ struct TodayView: View {
                     .padding(.top, 10)
                     .padding(.trailing, 16)
             }
+        }
+        .sheet(isPresented: $showingClose) {
+            CloseDaySheet().presentationDetents([.large])
         }
         .sheet(isPresented: $showingAdd) {
             QuickAddSheet()
@@ -119,6 +123,11 @@ struct TodayView: View {
                 }
                 .buttonStyle(SecondaryButtonStyle(width: 132))
                 Spacer(minLength: 0)
+            }
+
+            if DayCloseSettings.isClosed(at: now) && !DayCloseSettings.closedDays.contains(HeatData.key(now)) {
+                Button("Close the day") { showingClose = true }
+                    .buttonStyle(SecondaryButtonStyle(width: 274))
             }
 
             if !activity.isRunning || activity.lastError != nil {
