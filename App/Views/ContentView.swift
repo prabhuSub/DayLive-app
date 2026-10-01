@@ -34,6 +34,9 @@ struct TodayView: View {
                                 .offset(y: phase.value < 0 ? phase.value * -40 : 0)
                                 .scaleEffect(phase.value < 0 ? 1 + phase.value * 0.04 : 1, anchor: .top)
                         }
+                    heroButtons
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
 
                     VStack(alignment: .leading, spacing: 14) {
                         if !calendarGranted { calendarBanner }
@@ -108,10 +111,14 @@ struct TodayView: View {
         let state = snap.current != nil ? (snap.overtime ? "OVER TIME" : "NOW") : (snap.next != nil ? "FREE" : "TODAY")
         return VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("\(date) · \(state)")
-                    .font(.system(size: 11, weight: .heavy))
-                    .kerning(1.4)
-                    .foregroundStyle(.white.opacity(0.7))
+                HStack {
+                    Text("\(date) · \(state)")
+                        .font(.system(size: 11, weight: .heavy))
+                        .kerning(1.4)
+                        .foregroundStyle(.white.opacity(0.7))
+                    Spacer(minLength: 8)
+                    heroTimer(snap: snap)
+                }
                 Text(title)
                     .font(.system(size: 30, weight: .heavy))
                     .foregroundStyle(.white)
@@ -124,21 +131,6 @@ struct TodayView: View {
             // Tap the live block's name to open it (replaces the old LIVE NOW pill).
             .contentShape(Rectangle())
             .onTapGesture { if let c = snap.current { editing = c } }
-
-            HStack(spacing: 10) {
-                Button("Add block") { showingAdd = true }
-                    .buttonStyle(PrimaryButtonStyle(width: 116))
-                Button(activity.isRunning ? "Stop Live" : "Go Live") {
-                    Task {
-                        if activity.isRunning { await activity.stop() } else { await activity.start() }
-                    }
-                }
-                .buttonStyle(HeroOutlineButton())
-                Spacer(minLength: 0)
-                // #5 Plan with words · #8 Scan to blocks
-                iconButton("siri", label: "Plan with words") { showingWords = true }
-                iconButton("calendar-scan", label: "Scan to blocks") { showingScan = true }
-            }
 
             if DayCloseSettings.isClosed(at: now) && !DayCloseSettings.closedDays.contains(HeatData.key(now)) {
                 Button("Close the day") { showingClose = true }
@@ -158,6 +150,46 @@ struct TodayView: View {
                            startPoint: .topLeading, endPoint: .bottomTrailing),
             in: RoundedRectangle(cornerRadius: 16, style: .continuous)
         )
+    }
+
+    /// Add block · Go/Stop Live · Plan with words · Scan — one row under the card.
+    private var heroButtons: some View {
+        HStack(spacing: 10) {
+            Button("Add block") { showingAdd = true }
+                .buttonStyle(PrimaryButtonStyle())
+            Button(activity.isRunning ? "Stop Live" : "Go Live") {
+                Task {
+                    if activity.isRunning { await activity.stop() } else { await activity.start() }
+                }
+            }
+            .buttonStyle(SecondaryButtonStyle())
+            // #5 Plan with words · #8 Scan to blocks
+            iconButton("siri", label: "Plan with words") { showingWords = true }
+            iconButton("calendar-scan", label: "Scan to blocks") { showingScan = true }
+        }
+    }
+
+    /// Live timer pill on the card: green countdown, yellow +over, or countdown to the next block.
+    @ViewBuilder
+    private func heroTimer(snap: DaySnapshot) -> some View {
+        if let c = snap.current, snap.overtime {
+            LiveTimerPill(range: c.end...c.end.addingTimeInterval(24 * 3600), down: false, prefix: "+",
+                          fill: Color(red: 1, green: 0.84, blue: 0.04), text: .black)
+        } else if let c = snap.current, c.end > now {
+            LiveTimerPill(range: Date.now...c.end, down: true, fill: DayLiveStyle.doneGreen, text: .white)
+        } else if snap.current == nil, let n = snap.next, n.start > now {
+            LiveTimerPill(range: Date.now...n.start, down: true, fill: .white.opacity(0.18), text: .white)
+        }
+    }
+
+    private func rowPill(_ block: Block, snap: DaySnapshot) -> RowPill {
+        let steps = store.steps(for: block.id)
+        let done = store.overrides[block.id]?.end != nil || (!steps.isEmpty && steps.allSatisfy(\.done))
+        if block.id == snap.current?.id { return snap.overtime ? .over(block.end) : .live(block.end) }
+        if done { return .done }
+        if block.end <= now { return .ended }
+        if block.start > now { return .upcoming(block.start) }
+        return .live(block.end)
     }
 
     /// FOCUSED (Work + Deep Work so far) · STEPS · MEETINGS LEFT
@@ -181,40 +213,6 @@ struct TodayView: View {
         ]
     }
 
-    // MARK: LIVE NOW pill
-
-    @ViewBuilder
-    private func livePill(snap: DaySnapshot) -> some View {
-        if activity.isRunning, let c = snap.current {
-            let color = categories.displayColor(for: c)
-            Button { editing = c } label: {
-            HStack(spacing: 8) {
-                ZStack {
-                    Circle().fill(color).frame(width: 20, height: 20)
-                    Circle().fill(Color.white).frame(width: 7, height: 7)
-                }
-                VStack(alignment: .leading, spacing: 0) {
-                    Caps("Live now", color: color)
-                    Text(snap.overtime ? "\(now.timeIntervalSince(c.end).hoursMinutes) over"
-                                       : "\(c.end.timeIntervalSince(now).hoursMinutes) left")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Theme.text)
-                }
-            }
-            .padding(.vertical, 7)
-            .padding(.leading, 8)
-            .padding(.trailing, 12)
-            .background(RoundedRectangle(cornerRadius: 10).fill(Theme.card))
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 1))
-            .shadow(color: .black.opacity(0.08), radius: 8, y: 3)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Live now: \(c.title). Open steps.")
-        }
-    }
-
-    // MARK: Timeline
-
     private func timeline(snap: DaySnapshot) -> some View {
         VStack(spacing: 0) {
             if snap.all.isEmpty {
@@ -233,7 +231,8 @@ struct TodayView: View {
                         BlockRow(block: block, now: now,
                                  color: categories.displayColor(for: block),
                                  steps: store.steps(for: block.id),
-                                 icon: categories.category(for: block).iconName)
+                                 icon: categories.category(for: block).iconName,
+                                 pill: rowPill(block, snap: snap))
                     }
                     .buttonStyle(.plain)
                 }
@@ -245,9 +244,10 @@ struct TodayView: View {
     private func iconButton(_ icon: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HDIcon(icon, size: 20)
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.text)
                 .frame(width: 40, height: 40)
-                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.4), lineWidth: 1))
+                .background(RoundedRectangle(cornerRadius: 4).fill(Theme.card))
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.border, lineWidth: 1))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

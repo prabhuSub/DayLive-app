@@ -586,3 +586,115 @@ struct DriveCard: View {
         .padding(.vertical, 12)
     }
 }
+
+
+// MARK: - v16 compact Dynamic Island: block ring around the icon + live timer
+
+/// Which timer the compact Island shows.
+enum IslandPhase {
+    case running(ClosedRange<Date>)   // counts down to the block's end
+    case over(Date)                   // counts up from the planned end (yellow)
+    case free(ClosedRange<Date>)      // counts down to the next block
+    case upNext(Date)                 // nothing running, next block later: "in 8:05"
+    case idle
+
+    init(_ s: DayActivityAttributes.ContentState, now: Date = .now) {
+        if let over = s.overSince {
+            self = .over(over)
+        } else if let end = s.currentEnd, end > now {
+            self = .running((s.currentStart.map { min($0, now) } ?? now)...end)
+        } else if let next = s.nextStart, next > now {
+            if let free = s.freeStart, free < next { self = .free(min(free, now)...next) }
+            else { self = .upNext(next) }
+        } else {
+            self = .idle
+        }
+    }
+}
+
+/// Left side: the block's icon inside a ring that fills as this block runs.
+struct IslandRingIcon: View {
+    let state: DayActivityAttributes.ContentState
+    var size: CGFloat = 24
+
+    private static let overYellow = Color(red: 1, green: 0.84, blue: 0.04)
+
+    var body: some View {
+        let phase = IslandPhase(state)
+        ZStack {
+            switch phase {
+            case .running(let r), .free(let r):
+                ProgressView(timerInterval: r, countsDown: false) { EmptyView() } currentValueLabel: { EmptyView() }
+                    .progressViewStyle(.circular)
+                    .tint(ringColor(phase))
+            case .over:
+                Circle().stroke(Self.overYellow, lineWidth: 2.5)
+            case .upNext, .idle:
+                Circle().stroke(.white.opacity(0.22), lineWidth: 2.5)
+            }
+            glyph(phase)
+        }
+        .frame(width: size, height: size)
+    }
+
+    @ViewBuilder private func glyph(_ phase: IslandPhase) -> some View {
+        switch phase {
+        case .free:
+            Text("F").font(.system(size: size * 0.38, weight: .black)).foregroundStyle(ringColor(phase))
+        case .upNext, .idle:
+            HDIcon(state.iconName ?? "event", size: size * 0.48).foregroundStyle(.white.opacity(0.7))
+        default:
+            HDIcon(state.iconName ?? "edit", size: size * 0.48).foregroundStyle(ringColor(phase))
+        }
+    }
+
+    private func ringColor(_ phase: IslandPhase) -> Color {
+        switch phase {
+        case .over: return Self.overYellow
+        case .free: return DayLiveStyle.doneGreen
+        default: return state.accentColor
+        }
+    }
+}
+
+/// Right side: the live timer, sized with a hidden sample so it never jumps or truncates.
+struct IslandTimer: View {
+    let state: DayActivityAttributes.ContentState
+
+    var body: some View {
+        let phase = IslandPhase(state)
+        Group {
+            switch phase {
+            case .running(let r):
+                sized(r, down: true).foregroundStyle(state.accentColor)
+            case .free(let r):
+                sized(Date.now...r.upperBound, down: true).foregroundStyle(DayLiveStyle.doneGreen)
+            case .over(let since):
+                HStack(spacing: 0) {
+                    Text("+")
+                    sized(since...since.addingTimeInterval(24 * 3600), down: false)
+                }
+                .foregroundStyle(Color(red: 1, green: 0.84, blue: 0.04))
+            case .upNext(let next):
+                HStack(spacing: 3) {
+                    Text("in")
+                    sized(Date.now...next, down: true)
+                }
+                .foregroundStyle(.white.opacity(0.85))
+            case .idle:
+                DayRing(progress: state.dayProgress, accent: state.accentColor).frame(width: 20, height: 20)
+            }
+        }
+        .font(.system(size: 15, weight: .semibold).monospacedDigit())
+    }
+
+    private func sized(_ range: ClosedRange<Date>, down: Bool) -> some View {
+        let long = range.upperBound.timeIntervalSince(range.lowerBound) >= 3600 || !down
+        return Text(long ? "8:88:88" : "88:88").hidden()
+            .overlay(alignment: .trailing) {
+                Text(timerInterval: range, countsDown: down)
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+    }
+}

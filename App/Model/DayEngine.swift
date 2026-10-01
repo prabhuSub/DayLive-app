@@ -89,7 +89,8 @@ struct DaySnapshot {
             nextStart: current == nil ? next?.start : nil,
             nextTitle: current == nil ? next?.title : nil,
             overSince: overtime ? current?.end : nil,
-            iconName: current == nil ? nil : iconName
+            iconName: current == nil ? nil : iconName,
+            currentStart: current?.start
         )
     }
 }

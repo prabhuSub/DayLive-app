@@ -294,6 +294,7 @@ struct BlockRow: View {
     var steps: [Step] = []
     var showNow = true
     var icon: String? = nil
+    var pill: RowPill? = nil   // Today: live timer / in 2h 07m / ✓ Done / Ended
 
     private var detail: String {
         var parts: [String] = []
@@ -333,13 +334,15 @@ struct BlockRow: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 6)
-            if block.source == .calendar && !isNow {
+            if let pill {
+                RowPillView(pill: pill, now: now)
+            } else if block.source == .calendar && !isNow {
                 // Calendar events are read-only in Hyperday (can't be moved or deleted here).
                 HDIcon("event", size: 14)
                     .foregroundStyle(Theme.faint)
                     .accessibilityLabel("Calendar event")
             }
-            if isNow {
+            if isNow && pill == nil {
                 Text("NOW")
                     .font(.system(size: 10, weight: .bold))
                     .kerning(1.2)
@@ -348,7 +351,98 @@ struct BlockRow: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
+        .background(pill?.isLive == true ? DayLiveStyle.doneGreen.opacity(0.07) : .clear)
         .contentShape(Rectangle())
+    }
+}
+
+// MARK: - v16 timer pills
+
+enum RowPill {
+    case live(Date)       // counts down to this end
+    case over(Date)       // counts up from the planned end
+    case upcoming(Date)   // "in 2h 07m"
+    case done
+    case ended
+
+    var isLive: Bool {
+        switch self { case .live, .over: return true; default: return false }
+    }
+}
+
+struct RowPillView: View {
+    let pill: RowPill
+    let now: Date
+
+    var body: some View {
+        switch pill {
+        case .live(let end):
+            HStack(spacing: 5) {
+                Circle().fill(DayLiveStyle.doneGreen).frame(width: 6, height: 6)
+                Text(timerInterval: Date.now...max(end, Date.now), countsDown: true)
+                    .monospacedDigit()
+                Text("left")
+            }
+            .modifier(PillShape(fill: DayLiveStyle.doneGreen.opacity(0.15), text: Color(red: 0.11, green: 0.48, blue: 0.21)))
+        case .over(let since):
+            HStack(spacing: 0) {
+                Text("+")
+                Text(timerInterval: since...since.addingTimeInterval(24 * 3600), countsDown: false)
+                    .monospacedDigit()
+                Text(" over")
+            }
+            .modifier(PillShape(fill: Color(red: 1, green: 0.84, blue: 0.04).opacity(0.25), text: Color(red: 0.54, green: 0.43, blue: 0)))
+        case .upcoming(let start):
+            Text("in \(start.timeIntervalSince(now).hoursMinutes)")
+                .monospacedDigit()
+                .modifier(PillShape(fill: .clear, text: Theme.muted, stroke: Theme.border))
+        case .done:
+            Text("✓ Done").modifier(PillShape(fill: Theme.border.opacity(0.6), text: Theme.muted))
+        case .ended:
+            Text("Ended").modifier(PillShape(fill: Theme.border.opacity(0.6), text: Theme.faint))
+        }
+    }
+}
+
+private struct PillShape: ViewModifier {
+    let fill: Color
+    let text: Color
+    var stroke: Color? = nil
+    func body(content: Content) -> some View {
+        content
+            .font(.system(size: 12, weight: .bold))
+            .foregroundStyle(text)
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, 9)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(fill))
+            .overlay(Capsule().stroke(stroke ?? .clear, lineWidth: 1))
+    }
+}
+
+/// The live timer on the Today card (ticks every second via Text(timerInterval:)).
+struct LiveTimerPill: View {
+    let range: ClosedRange<Date>
+    let down: Bool
+    var prefix: String = ""
+    let fill: Color
+    let text: Color
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Circle().fill(text).frame(width: 7, height: 7)
+            HStack(spacing: 0) {
+                if !prefix.isEmpty { Text(prefix) }
+                Text(timerInterval: range, countsDown: down).monospacedDigit()
+            }
+        }
+        .font(.system(size: 13, weight: .heavy))
+        .foregroundStyle(text)
+        .fixedSize()
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(Capsule().fill(fill))
     }
 }
 

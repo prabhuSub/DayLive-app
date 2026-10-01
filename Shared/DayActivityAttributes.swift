@@ -51,6 +51,8 @@ struct DayActivityAttributes: ActivityAttributes {
         var driveSince: Date?
         var arriveAt: Date?
         var spareMinutes: Int?       // minutes before the next block starts (negative = late)
+        // v16: start of the live block, so the Island ring fills across this block.
+        var currentStart: Date?
     }
 
     var dayStart: Date

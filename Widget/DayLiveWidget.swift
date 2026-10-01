@@ -68,15 +68,22 @@ struct DayLiveActivityWidget: Widget {
                     }
                 }
             } compactLeading: {
-                SourceIcon(source: context.state.source, size: 22,
-                           tint: context.state.source == .free ? nil : context.state.accentColor,
-                                       iconName: context.state.iconName)
+                if context.state.closed == true || context.state.driving == true {
+                    SourceIcon(source: context.state.source, size: 22,
+                               tint: context.state.source == .free ? nil : context.state.accentColor,
+                               iconName: context.state.iconName)
+                } else {
+                    IslandRingIcon(state: context.state, size: 24)
+                }
             } compactTrailing: {
-                DayRing(progress: context.state.dayProgress, accent: context.state.accentColor)
-                    .frame(width: 20, height: 20)
+                if context.state.closed == true || context.state.driving == true {
+                    DayRing(progress: context.state.dayProgress, accent: context.state.accentColor)
+                        .frame(width: 20, height: 20)
+                } else {
+                    IslandTimer(state: context.state)
+                }
             } minimal: {
-                DayRing(progress: context.state.dayProgress, accent: context.state.accentColor)
-                    .frame(width: 20, height: 20)
+                IslandRingIcon(state: context.state, size: 22)
             }
             .keylineTint(context.state.accentColor)
         }
