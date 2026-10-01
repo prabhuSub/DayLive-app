@@ -387,20 +387,19 @@ struct AdjustTimeButtons: View {
         if let id = state.actionBlockID, let action = state.action, action != .startNext,
            state.source == .plan, state.closed != true {
             HStack(spacing: 6) {
-                button(id, -15, "minus")
-                button(id, 15, "plus")
+                button(id, -15, "−15")
+                button(id, 15, "+15")
             }
         }
     }
 
-    /// Yellow rounded squares with − / + (15 minutes each).
-    private func button(_ id: String, _ m: Int, _ symbol: String) -> some View {
+    private func button(_ id: String, _ m: Int, _ label: String) -> some View {
         Button(intent: AdjustTimeIntent(blockID: id, minutes: m)) {
-            Image(systemName: symbol)
-                .font(.system(size: 14, weight: .heavy))
-                .foregroundStyle(.black)
-                .frame(width: 28, height: 28)
-                .background(DayLiveStyle.stepYellow, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            Text(label)
+                .font(.system(size: 13, weight: .bold).monospacedDigit())
+                .foregroundStyle(.white)
+                .frame(width: 42, height: 28)
+                .background(Color.white.opacity(0.16), in: Capsule())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(m > 0 ? "Add 15 minutes" : "Cut 15 minutes")
