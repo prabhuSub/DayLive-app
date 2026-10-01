@@ -495,28 +495,71 @@ struct SwipeRow<Content: View>: View {
 }
 
 
-/// The round + (black in light mode, white in dark). Tap adds a block; press and hold for Plan with words / Scan.
+/// The round + (black in light mode, white in dark). Tap adds a block; press and hold blurs the screen
+/// and shows Add block · Plan with words · Scan to blocks (our own menu, so the blur is strong and consistent).
 struct AddFab: View {
     let open: (RootView.AddMode) -> Void
+    @State private var menu = false
 
     var body: some View {
-        Button { open(.block) } label: {
+        ZStack(alignment: .bottomTrailing) {
+            if menu {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .overlay(Color.black.opacity(0.12))
+                    .ignoresSafeArea()
+                    .onTapGesture { close() }
+                    .transition(.opacity)
+                VStack(spacing: 0) {
+                    item("Add block", "add", .block)
+                    if AIPlanner.isAvailable {
+                        Divider()
+                        item("Plan with words", "siri", .words)
+                    }
+                    Divider()
+                    item("Scan to blocks", "calendar-scan", .scan)
+                }
+                .frame(width: 240)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .shadow(color: .black.opacity(0.2), radius: 20, y: 8)
+                .padding(.bottom, 72)
+                .transition(.scale(scale: 0.85, anchor: .bottomTrailing).combined(with: .opacity))
+            }
             HDIcon("add", size: 26)
                 .foregroundStyle(Theme.bg)
+                .rotationEffect(.degrees(menu ? 45 : 0))
                 .frame(width: 58, height: 58)
                 .background(Circle().fill(Theme.text))
                 .shadow(color: .black.opacity(0.28), radius: 10, y: 6)
                 .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Add block")
-        .accessibilityHint("Press and hold for Plan with words or Scan to blocks")
-        .contextMenu {
-            Button { open(.block) } label: { Label { Text("Add block") } icon: { Image("hd-add") } }
-            if AIPlanner.isAvailable {
-                Button { open(.words) } label: { Label { Text("Plan with words") } icon: { Image("hd-siri") } }
-            }
-            Button { open(.scan) } label: { Label { Text("Scan to blocks") } icon: { Image("hd-calendar-scan") } }
+                .onTapGesture { menu ? close() : open(.block) }
+                .onLongPressGesture(minimumDuration: 0.35) {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { menu = true }
+                }
+                .accessibilityLabel("Add block")
+                .accessibilityHint("Press and hold for Plan with words or Scan to blocks")
+                .accessibilityAction(named: "More ways to add") { menu = true }
         }
     }
+
+    private func item(_ title: String, _ icon: String, _ mode: RootView.AddMode) -> some View {
+        Button {
+            close()
+            open(mode)
+        } label: {
+            HStack {
+                Text(title).font(.system(size: 16))
+                Spacer()
+                HDIcon(icon, size: 20)
+            }
+            .foregroundStyle(Theme.text)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 13)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func close() { withAnimation(.easeOut(duration: 0.2)) { menu = false } }
 }
