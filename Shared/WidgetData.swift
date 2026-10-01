@@ -54,6 +54,24 @@ enum WidgetShared {
     static let dayKind = "HyperdayLockDay"
     static let circleKind = "HyperdayLockCircle"
     static let heatKind = "HyperdayHeat"
+    static let calKind = "HyperdayCalendar"
+
+    static var calURL: URL? {
+        FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: appGroup)?
+            .appendingPathComponent("widget-calendar.json")
+    }
+
+    @discardableResult
+    static func saveCalendar(_ counts: [String: Int]) -> Bool {
+        guard let url = calURL, let data = try? JSONEncoder().encode(counts) else { return false }
+        return (try? data.write(to: url, options: .atomic)) != nil
+    }
+
+    static func loadCalendar() -> [String: Int]? {
+        guard let url = calURL, let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode([String: Int].self, from: data)
+    }
 
     static var heatURL: URL? {
         FileManager.default

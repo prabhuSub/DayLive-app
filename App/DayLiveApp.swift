@@ -36,7 +36,10 @@ struct DayLiveApp: App {
                 .environmentObject(history)
                 .fullScreenCover(isPresented: $recap.showing) { WeeklyRecapView() }
                 // "Day closed · Review" on the Lock Screen opens hyperday://close
-                .onOpenURL { url in if url.host == "close" { showCloseDay = true } }
+                .onOpenURL { url in
+                    if url.host == "close" { showCloseDay = true }
+                    if url.host == "calendar" { CalendarJump.open(.now) }   // calendar widget → Calendar tab, today
+                }
                 .sheet(isPresented: $showCloseDay) {
                     CloseDaySheet()
                         .environmentObject(store)

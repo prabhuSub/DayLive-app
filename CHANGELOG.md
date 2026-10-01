@@ -26,6 +26,7 @@
 - **Good-Day formula** (#4) on Stats: what your 6+-done days have in common (sleep, first block, meetings, workouts, commute).
 - **Plan with words** (#5) and **Evening story** (#6) with Apple Intelligence on iOS 26 (on-device).
 - **Scan to blocks** (#8): photo or camera → dates and times become blocks.
+- **3-week calendar widget** (Lock Screen + StandBy/Home small): last, this and next week, Monday first, this week in a rounded band, today a rounded square, a bar under each date for how busy it is.
 - **Drive card** (#9): while driving, arrival time from Apple Maps and minutes to spare before your next block.
 
 ### Changed

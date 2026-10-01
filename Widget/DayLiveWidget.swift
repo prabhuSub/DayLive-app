@@ -11,6 +11,7 @@ struct DayLiveWidgetBundle: WidgetBundle {
         HyperdayDayWidget()
         HyperdayCircleWidget()
         HyperdayHeatWidget()
+        HyperdayCalendarWidget()
     }
 }
 

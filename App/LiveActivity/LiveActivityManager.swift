@@ -191,6 +191,7 @@ final class LiveActivityManager: ObservableObject {
 
         isRunning = !Self.liveActivities().isEmpty
         writeWidgetDay(snap, now: now)
+        writeCalendarCounts(now: now)
         BackgroundRefresh.schedule(at: boundary)
     }
 
@@ -212,6 +213,26 @@ final class LiveActivityManager: ObservableObject {
         lastWidgetDay = day
         if WidgetShared.save(day) {
             WidgetCenter.shared.reloadAllTimelines()
+        }
+    }
+
+    private var lastCalendarCounts: [String: Int]?
+
+    /// Blocks + events per day for the 3-week calendar widget (last week · this week · next week).
+    private func writeCalendarCounts(now: Date) {
+        var cal = Calendar(identifier: .gregorian)
+        cal.firstWeekday = 2   // Monday
+        guard let thisWeek = cal.dateInterval(of: .weekOfYear, for: now)?.start,
+              let from = cal.date(byAdding: .day, value: -7, to: thisWeek),
+              let to = cal.date(byAdding: .day, value: 14, to: thisWeek) else { return }
+        var counts: [String: Int] = [:]
+        let blocks = CalendarService.shared.events(from: from, to: to)
+            + BlockStore.shared.planBlocks.filter { $0.start >= from && $0.start < to }
+        for b in blocks { counts[HeatData.key(b.start), default: 0] += 1 }
+        guard counts != lastCalendarCounts else { return }
+        lastCalendarCounts = counts
+        if WidgetShared.saveCalendar(counts) {
+            WidgetCenter.shared.reloadTimelines(ofKind: WidgetShared.calKind)
         }
     }
 
