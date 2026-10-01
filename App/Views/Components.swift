@@ -590,13 +590,28 @@ struct TabRoot<Content: View>: View {
                             .fixedSize()
                             .accessibilityAddTraits(.isHeader)
                     }
+                    .noGlass()
                     ToolbarItem(placement: .topBarTrailing) {
                         ProfileButton { showProfile = true }
                     }
+                    .noGlass()
                 }
         }
         .sheet(isPresented: $showProfile) {
             ProfileSheet().presentationDetents([.large])
+        }
+    }
+}
+
+
+extension ToolbarContent {
+    /// iOS 26 puts a Liquid Glass bubble behind toolbar items; our wordmark and avatar sit bare.
+    @ToolbarContentBuilder
+    func noGlass() -> some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            self.sharedBackgroundVisibility(.hidden)
+        } else {
+            self
         }
     }
 }
