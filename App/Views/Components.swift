@@ -645,9 +645,16 @@ struct AddFab: View {
         ZStack(alignment: .bottomTrailing) {
             if menu {
                 ZStack {
-                    // Half the blur it had: the thinnest material at 50% strength, same light dim on top.
+                    // Glossy glass: light blur (thinnest material at 50%), a soft white wash,
+                    // and a sheen from the top-left so it reads as glass, not fog.
                     Rectangle().fill(.ultraThinMaterial).opacity(0.5)
-                    Color.black.opacity(0.12)
+                    Color.white.opacity(0.18)
+                    LinearGradient(stops: [
+                        .init(color: .white.opacity(0.55), location: 0),
+                        .init(color: .white.opacity(0.08), location: 0.38),
+                        .init(color: .white.opacity(0), location: 0.6),
+                        .init(color: .white.opacity(0.12), location: 1),
+                    ], startPoint: .topLeading, endPoint: .bottomTrailing)
                 }
                     .contentShape(Rectangle())
                     .ignoresSafeArea()
