@@ -94,7 +94,7 @@ struct CalendarTabView: View {
         }
         // Always open on today (or the day the heatmap asked for).
         .onAppear {
-            tapDay(CalendarJump.pending ?? cal.startOfDay(for: .now), fromTodayButton: true)
+            tapDay(CalendarJump.pending ?? cal.startOfDay(for: .now), fromTodayButton: true, animated: false)
             CalendarJump.pending = nil
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
@@ -242,9 +242,16 @@ struct CalendarTabView: View {
     }
 
     /// Tap a date: the list below jumps to it. Tap the same date again: back to today.
-    private func tapDay(_ day: Date, fromTodayButton: Bool = false) {
+    private func tapDay(_ day: Date, fromTodayButton: Bool = false, animated: Bool = true) {
         let today = cal.startOfDay(for: .now)
         let target = (!fromTodayButton && cal.isDate(day, inSameDayAs: selected)) ? today : cal.startOfDay(for: day)
+        if !animated {
+            // Opening the tab: land on the day directly (no scroll animation fighting the tab fade).
+            selected = target
+            if mode == .agenda { agendaTop = target }
+            scrollTick += 1
+            return
+        }
         withAnimation(.easeOut(duration: 0.2)) { selected = target }
         if mode == .agenda {
             withAnimation(.easeInOut(duration: 0.3)) { agendaTop = target }

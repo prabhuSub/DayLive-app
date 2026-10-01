@@ -495,16 +495,16 @@ struct RootView: View {
 
     var body: some View {
         TabView(selection: $tab) {
-            TabRoot(title: "Today") { TodayView() }
+            TabRoot(title: "Today") { TodayView().tabFade(tab == .today) }
                 .tabItem { Label { Text(AppTab.today.title) } icon: { Image("hd-tab-" + AppTab.today.icon).renderingMode(.template) } }
                 .tag(AppTab.today)
-            TabRoot(title: "Calendar") { CalendarTabView() }
+            TabRoot(title: "Calendar") { CalendarTabView().tabFade(tab == .calendar) }
                 .tabItem { Label { Text(AppTab.calendar.title) } icon: { Image("hd-tab-" + AppTab.calendar.icon).renderingMode(.template) } }
                 .tag(AppTab.calendar)
-            TabRoot(title: "Stats") { StatsView() }
+            TabRoot(title: "Stats") { StatsView().tabFade(tab == .stats) }
                 .tabItem { Label { Text(AppTab.stats.title) } icon: { Image("hd-tab-" + AppTab.stats.icon).renderingMode(.template) } }
                 .tag(AppTab.stats)
-            TabRoot(title: "Settings") { SettingsView() }
+            TabRoot(title: "Settings") { SettingsView().tabFade(tab == .settings) }
                 .tabItem { Label { Text(AppTab.settings.title) } icon: { Image("hd-tab-" + AppTab.settings.icon).renderingMode(.template) } }
                 .tag(AppTab.settings)
         }
@@ -527,6 +527,32 @@ struct RootView: View {
 }
 
 
+
+// MARK: - v18 tab switch: quick crossfade
+
+/// When a tab becomes active, its content fades in over 0.2s and rises 6pt.
+private struct TabFade: ViewModifier {
+    let active: Bool
+    @State private var shown = true
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(shown ? 1 : 0)
+            .offset(y: shown ? 0 : 6)
+            .onChange(of: active) { _, isActive in
+                guard isActive else { return }
+                var t = Transaction(); t.disablesAnimations = true
+                withTransaction(t) { shown = false }
+                DispatchQueue.main.async {
+                    withAnimation(.easeOut(duration: 0.2)) { shown = true }
+                }
+            }
+    }
+}
+
+extension View {
+    func tabFade(_ active: Bool) -> some View { modifier(TabFade(active: active)) }
+}
 
 // MARK: - Swipe row (Today list lives in a ScrollView, where .swipeActions isn't available)
 
