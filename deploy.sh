@@ -53,22 +53,26 @@ APP=build/Build/Products/Debug-iphoneos/DayLive.app
 
 echo "› Finding your iPhone…"
 JSON=$(mktemp)
+SIMS=$(mktemp)
 xcrun devicectl list devices --json-output "$JSON" >/dev/null
-DEVICE=$(/usr/bin/python3 - "$JSON" <<'PY'
+xcrun simctl list devices --json > "$SIMS" 2>/dev/null || echo '{"devices":{}}' > "$SIMS"
+DEVICE=$(/usr/bin/python3 - "$JSON" "$SIMS" <<'PY'
 import json, sys
 devices = json.load(open(sys.argv[1]))["result"]["devices"]
+# Every Simulator's ID, so a Simulator can never be picked as "your iPhone".
+sims = {d["udid"] for group in json.load(open(sys.argv[2])).get("devices", {}).values() for d in group}
+def ids(d):
+    hp = d.get("hardwareProperties", {})
+    return {d.get("identifier"), hp.get("udid")}
 phones = [d for d in devices
-          if d.get("hardwareProperties", {}).get("platform") == "iOS"
-          and d.get("hardwareProperties", {}).get("reality") != "virtual"    # skip simulators
-          and "simulator" not in str(d.get("hardwareProperties", {}).get("platform", "")).lower()
+          if not (ids(d) & sims)
+          and d.get("hardwareProperties", {}).get("platform") == "iOS"
           and d.get("connectionProperties", {}).get("pairingState") == "paired"
           and d.get("connectionProperties", {}).get("tunnelState") != "unavailable"]
-# Prefer a phone that's connected right now (cable or Wi-Fi) over one that's merely paired.
-phones.sort(key=lambda d: d.get("connectionProperties", {}).get("tunnelState") != "connected")
 print(phones[0]["identifier"] if phones else "")
 PY
 )
-rm -f "$JSON"
+rm -f "$JSON" "$SIMS"
 if [[ -z "$DEVICE" ]]; then
   echo "✗ No iPhone found. Unlock it and connect by cable or the same Wi-Fi, then try again."
   echo "  Devices Xcode can see:"
