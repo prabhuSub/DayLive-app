@@ -59,8 +59,11 @@ import json, sys
 devices = json.load(open(sys.argv[1]))["result"]["devices"]
 phones = [d for d in devices
           if d.get("hardwareProperties", {}).get("platform") == "iOS"
+          and d.get("hardwareProperties", {}).get("reality") == "physical"   # skip simulators
           and d.get("connectionProperties", {}).get("pairingState") == "paired"
           and d.get("connectionProperties", {}).get("tunnelState") != "unavailable"]
+# Prefer a phone that's connected right now (cable or Wi-Fi) over one that's merely paired.
+phones.sort(key=lambda d: d.get("connectionProperties", {}).get("tunnelState") != "connected")
 print(phones[0]["identifier"] if phones else "")
 PY
 )
