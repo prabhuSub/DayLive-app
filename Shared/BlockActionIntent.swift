@@ -37,32 +37,3 @@ struct BlockActionIntent: LiveActivityIntent {
         return .result()
     }
 }
-
-/// v19: −15 / +15 on the Live Activity. Changes how long YOUR planned block runs, even if it now
-/// runs into the next block (that one just shows as "also:"). Calendar events are never touched.
-struct AdjustTimeIntent: LiveActivityIntent {
-    static var title: LocalizedStringResource = "Add or cut time"
-    static var isDiscoverable: Bool = false
-
-    @Parameter(title: "Block ID")
-    var blockID: String
-
-    @Parameter(title: "Minutes")
-    var minutes: Int
-
-    init() {}
-
-    init(blockID: String, minutes: Int) {
-        self.blockID = blockID
-        self.minutes = minutes
-    }
-
-    func perform() async throws -> some IntentResult {
-        #if !WIDGET_EXTENSION
-        let id = blockID, m = minutes
-        await MainActor.run { BlockStore.shared.adjust(blockID: id, minutes: m, now: .now) }
-        await LiveActivityManager.shared.refresh()
-        #endif
-        return .result()
-    }
-}

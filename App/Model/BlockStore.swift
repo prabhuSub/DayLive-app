@@ -183,22 +183,6 @@ final class BlockStore: ObservableObject {
         save()
     }
 
-    /// −15 / +15 from the Live Activity (planned blocks only). +15 while over time counts from now,
-    /// so it always gives you 15 more minutes. Never cuts below 1 minute from now or 5 minutes long.
-    func adjust(blockID: String, minutes: Int, now: Date) {
-        guard let i = planBlocks.firstIndex(where: { $0.id == blockID }) else { return }
-        let b = planBlocks[i]
-        let length = b.end.timeIntervalSince(b.start)
-        let o = overrides[blockID]
-        let runStart = (o?.started == true ? o?.start : nil) ?? b.start
-        let runEnd = runStart.addingTimeInterval(length)
-        let base = minutes > 0 ? max(runEnd, now) : runEnd
-        let floor = max(now.addingTimeInterval(60), runStart.addingTimeInterval(300))
-        let newEnd = max(base.addingTimeInterval(TimeInterval(minutes * 60)), floor)
-        planBlocks[i].end = b.start.addingTimeInterval(newEnd.timeIntervalSince(runStart))
-        save()
-    }
-
     // MARK: Persistence
 
     private func pruneOld() {
