@@ -108,16 +108,16 @@ final class RealityStore: ObservableObject {
                 driveFrom = nil
             case .arrived: atPlace = (e.place ?? "Place", e.date)
             case .departed:
-                if let (name, from) = atPlace, name == e.place {
-                    out.append(.init(kind: .place, label: "At \(name.lowercased())", start: from, end: e.date))
+                if let ap = atPlace, ap.0 == e.place {
+                    out.append(.init(kind: .place, label: "At \(ap.0.lowercased())", start: ap.1, end: e.date))
                 }
                 atPlace = nil
             }
         }
         let openEnd = min(now, dayEnd)
         if let f = driveFrom, f < openEnd { out.append(.init(kind: .drive, label: "Driving", start: f, end: openEnd)) }
-        if let (name, from) = atPlace, from < openEnd, name != "Home" {
-            out.append(.init(kind: .place, label: "At \(name.lowercased())", start: from, end: openEnd))
+        if let ap = atPlace, ap.1 < openEnd, ap.0 != "Home" {
+            out.append(.init(kind: .place, label: "At \(ap.0.lowercased())", start: ap.1, end: openEnd))
         }
         for w in workouts where w.start >= dayStart && w.start < dayEnd {
             out.append(.init(kind: .workout, label: "Workout", start: w.start, end: w.end))
