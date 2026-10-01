@@ -7,6 +7,7 @@ struct CloseDaySheet: View {
     @EnvironmentObject private var history: HistoryStore
     @Environment(\.dismiss) private var dismiss
     @State private var notDone: [Block] = []
+    @State private var story: String?
 
     private let today = Date.now
 
@@ -23,6 +24,20 @@ struct CloseDaySheet: View {
                         (Text("\(done.count)").foregroundColor(DayLiveStyle.doneGreen) + Text(" of \(total) done"))
                             .font(.system(size: 30, weight: .heavy))
                             .foregroundStyle(Theme.text)
+                    }
+
+                    if let story {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Caps("Your day")
+                            Text(story)
+                                .font(.system(size: 15))
+                                .italic()
+                                .foregroundStyle(Theme.text)
+                            Text("Written on your iPhone by Apple Intelligence from today's blocks and places.")
+                                .font(.system(size: 11))
+                                .foregroundStyle(Theme.muted)
+                        }
+                        .cardBox()
                     }
 
                     if !notDone.isEmpty {
@@ -74,6 +89,24 @@ struct CloseDaySheet: View {
             }
         }
         .onAppear { notDone = LiveActivityManager.shared.notDoneToday(now: today) }
+        .task { await loadStory() }
+    }
+
+    /// #6 Evening story: generated once per day, kept for the rest of it.
+    private func loadStory() async {
+        let key = "story-" + HeatData.key(today)
+        if let saved = UserDefaults.standard.string(forKey: key) { story = saved; return }
+        guard AIPlanner.isAvailable else { return }
+        let entries = history.entries(on: today)
+        let reality = RealityStore.shared.segments(on: today).map {
+            "\($0.label) \($0.start.shortTime)–\($0.end.shortTime)"
+        }
+        let done = entries.filter(\.done).map(\.title)
+        let notDone = entries.filter({ !$0.done }).map(\.title)
+        if let text = try? await AIPlanner.story(done: done, notDone: notDone, reality: reality) {
+            story = text
+            UserDefaults.standard.set(text, forKey: key)
+        }
     }
 
     private func row(_ b: Block) -> some View {

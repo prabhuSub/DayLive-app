@@ -34,6 +34,7 @@ struct StatsView: View {
 
                     VStack(spacing: 12) {
                         HeatmapCard()
+                        GoodDayCard()
                         if s.isEmpty {
                             VStack(alignment: .leading, spacing: 6) {
                                 Caps("No history yet")

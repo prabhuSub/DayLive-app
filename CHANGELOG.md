@@ -22,6 +22,12 @@
 - **Day Close** (v9): at your close time the Lock Screen card becomes "Day closed" with what you finished and a Review link; a 30-second review moves unfinished blocks to tomorrow or drops them.
 - **Tomorrow pre-flight**: tomorrow's first block, leave-by (office days) and bed-by from your sleep target (Health average optional).
 
+- **Reality line** (#3): Plan vs real on Today, from Location (Home/Office/Gym arrivals), your car (Shortcuts automation: I'm driving / Arrived) and Health workouts, which also tick Fitness blocks. Learns your commute for pre-flight.
+- **Good-Day formula** (#4) on Stats: what your 6+-done days have in common (sleep, first block, meetings, workouts, commute).
+- **Plan with words** (#5) and **Evening story** (#6) with Apple Intelligence on iOS 26 (on-device).
+- **Scan to blocks** (#8): photo or camera → dates and times become blocks.
+- **Drive card** (#9): while driving, arrival time from Apple Maps and minutes to spare before your next block.
+
 ### Changed
 - Done is green, Step is yellow, Start now grey.
 - Calendar tab always opens on today; the agenda is one continuous list (90 days back and ahead). Tasks are kept for 2 years.

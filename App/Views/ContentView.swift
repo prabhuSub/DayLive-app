@@ -10,6 +10,8 @@ struct TodayView: View {
 
     @State private var showingAdd = false
     @State private var showingClose = false
+    @State private var showingWords = false
+    @State private var showingScan = false
     @State private var editing: Block?
     @State private var now = Date.now
     @State private var calendarGranted = CalendarService.shared.hasAccess
@@ -56,6 +58,8 @@ struct TodayView: View {
                     .padding(.trailing, 16)
             }
         }
+        .sheet(isPresented: $showingWords) { PlanWithWordsSheet().presentationDetents([.large]) }
+        .sheet(isPresented: $showingScan) { ScanSheet().presentationDetents([.large]) }
         .sheet(isPresented: $showingClose) {
             CloseDaySheet().presentationDetents([.large])
         }
@@ -120,19 +124,22 @@ struct TodayView: View {
 
             HStack(spacing: 10) {
                 Button("Add block") { showingAdd = true }
-                    .buttonStyle(PrimaryButtonStyle(width: 132))
+                    .buttonStyle(PrimaryButtonStyle(width: 116))
                 Button(activity.isRunning ? "Stop Live" : "Go Live") {
                     Task {
                         if activity.isRunning { await activity.stop() } else { await activity.start() }
                     }
                 }
-                .buttonStyle(SecondaryButtonStyle(width: 132))
+                .buttonStyle(SecondaryButtonStyle(width: 116))
                 Spacer(minLength: 0)
+                // #5 Plan with words · #8 Scan to blocks
+                iconButton("siri", label: "Plan with words") { showingWords = true }
+                iconButton("calendar-scan", label: "Scan to blocks") { showingScan = true }
             }
 
             if DayCloseSettings.isClosed(at: now) && !DayCloseSettings.closedDays.contains(HeatData.key(now)) {
                 Button("Close the day") { showingClose = true }
-                    .buttonStyle(SecondaryButtonStyle(width: 274))
+                    .buttonStyle(SecondaryButtonStyle(width: 242))
             }
 
             if !activity.isRunning || activity.lastError != nil {
@@ -223,6 +230,18 @@ struct TodayView: View {
             }
         }
         .cardBox(padding: 0)
+    }
+
+    private func iconButton(_ icon: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HDIcon(icon, size: 20)
+                .foregroundStyle(Theme.text)
+                .frame(width: 40, height: 40)
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.border, lineWidth: 1))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 
     /// Swipe right: Start (timer from now). Only blocks you planned; calendar events don't swipe.
