@@ -449,8 +449,15 @@ struct WatchCard: View {
     var isStale: Bool = false
 
     private var nextTime: String? {
-        guard !isStale, let r = state.label.range(of: " at ") else { return nil }
+        guard !isStale, state.paused != true, let r = state.label.range(of: " at ") else { return nil }
         return "Next " + state.label[r.upperBound...]
+    }
+
+    /// Grey bar while paused (same as the iPhone card).
+    private var watchBar: DayActivityAttributes.ContentState {
+        var s = state
+        if state.paused == true { s.accentHex = "#8E8E93" }
+        return s
     }
 
     var body: some View {
@@ -458,6 +465,9 @@ struct WatchCard: View {
             HStack(spacing: 5) {
                 AppMark(size: 14)
                 TimerLabel(state: state, size: 13)
+                    .foregroundStyle(state.paused == true ? Color(white: 0.75) : .white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 Spacer(minLength: 2)
                 if let nextTime {
                     Text(nextTime)
@@ -470,7 +480,9 @@ struct WatchCard: View {
                 .font(.system(size: 16, weight: .bold))
                 .lineLimit(1)
             HStack(spacing: 6) {
-                DayBar(state: state, height: 4)
+                DayBar(state: watchBar, height: 4)
+                PauseButton(state: state)
+                    .scaleEffect(0.85)
                 BlockActionButton(state: state)
                     .scaleEffect(0.85)
             }
