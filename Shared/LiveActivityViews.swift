@@ -388,10 +388,11 @@ struct PauseButton: View {
             Button(intent: PauseBlockIntent(blockID: id, pause: !paused)) {
                 Image(systemName: paused ? "play.fill" : "pause.fill")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(paused ? .black : .white)
                     .contentTransition(.symbolEffect(.replace.downUp))
                     .frame(width: 36, height: 36)
-                    .background(Color.white.opacity(0.18), in: Circle())
+                    // Paused: yellow so Resume stands out; running: quiet grey.
+                    .background(paused ? DayLiveStyle.stepYellow : Color.white.opacity(0.18), in: Circle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(paused ? "Resume" : "Pause")
