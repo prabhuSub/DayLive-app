@@ -377,35 +377,24 @@ struct DayBar: View {
     }
 }
 
-/// v20: Pause (grey circle) while your own block runs; white "Resume" while paused.
+/// v20: one round icon button. Pause ⏸ while your own block runs, Play ▶ while paused.
+/// Same button both ways, so iOS morphs the symbol (pause → play) instead of swapping views.
 struct PauseButton: View {
     let state: DayActivityAttributes.ContentState
 
     var body: some View {
         if state.canPause == true, let id = state.actionBlockID {
-            if state.paused == true {
-                Button(intent: PauseBlockIntent(blockID: id, pause: false)) {
-                    HStack(spacing: 5) {
-                        Image(systemName: "play.fill").font(.system(size: 12, weight: .bold))
-                        Text("Resume").font(.system(size: 14, weight: .bold))
-                    }
-                    .foregroundStyle(.black)
-                    .padding(.horizontal, 14)
-                    .frame(height: 36)
-                    .background(Color.white, in: Capsule())
-                }
-                .buttonStyle(.plain)
-            } else {
-                Button(intent: PauseBlockIntent(blockID: id, pause: true)) {
-                    Image(systemName: "pause.fill")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 36, height: 36)
-                        .background(Color.white.opacity(0.18), in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Pause")
+            let paused = state.paused == true
+            Button(intent: PauseBlockIntent(blockID: id, pause: !paused)) {
+                Image(systemName: paused ? "play.fill" : "pause.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.white)
+                    .contentTransition(.symbolEffect(.replace.downUp))
+                    .frame(width: 36, height: 36)
+                    .background(Color.white.opacity(0.18), in: Circle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(paused ? "Resume" : "Pause")
         }
     }
 }
